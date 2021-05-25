@@ -92,13 +92,14 @@ describe("domEditor", function () {
 
 			it("with namespace", function () {
 				const actual = h("svg", {namespace: h.namespace.svg}).node
-				expect(actual.namespaceURI).to.be.equal(expected.namespaceURI)
+
+				expect(actual.isEqualNode(expected)).to.be.true
 				expect(actual.outerHTML).to.be.equal(expected.outerHTML)
 				expect(actual.transform).to.be.instanceof(SVGAnimatedTransformList)
 			})
 			it("with ns alias", function () {
 				const actual = h("svg", {namespace: h.ns.svg}).node
-				expect(actual.namespaceURI).to.be.equal(expected.namespaceURI)
+				expect(actual.isEqualNode(expected)).to.be.true
 				expect(actual.outerHTML).to.be.equal(expected.outerHTML)
 				expect(actual.transform).to.be.instanceof(SVGAnimatedTransformList)
 			})
@@ -359,29 +360,21 @@ describe("domEditor", function () {
 			h(el)
 				.class("test")
 				.append(
-					"un peu de texte ",
+					"some text ",
 					h("span")
-						.class(["span", "autre"])
-						.text("un span"),
-					" et un truc a attribut ",
+						.class(["span", "someClass"])
+						.text("span text"),
+					", a tag with 1 attribute ",
 					h("a")
 						.attr("href", "link")
 						.html("<b>link</b>"),
-					" mais il faut aussi que plusieurs attributs ce sois simple ",
+					" and a tag with multiple attributes ",
 					h("img")
-						.attr({title: "LOL", src: "img.jpg"})
+						.attr({title: "some title", src: "img.jpg"})
 				)
 
 			expect(el.outerHTML.trim()).to.be
-				.equal(`<div class="test">un peu de texte <span class="span autre">un span</span> et un truc a attribut <a href="link"><b>link</b></a> mais il faut aussi que plusieurs attributs ce sois simple <img title="LOL" src="img.jpg"></div>`.trim())
+				.equal(`<div class="test">some text <span class="span someClass">span text</span>, a tag with 1 attribute <a href="link"><b>link</b></a> and a tag with multiple attributes <img title="some title" src="img.jpg"></div>`.trim())
 		})
-
 	})
 })
-
-
-/* TODO
-	constructor namespace
-	elementCreationOption
-	commentaires
- */

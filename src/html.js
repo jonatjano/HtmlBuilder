@@ -2,128 +2,154 @@ const FLAT_DEPTH = 2
 
 class DOMBuilderElement {
 	/**
+	 * the wrapped node
 	 * @type {Node}
-	 * @private
 	 */
-	_element
+	_node
 
 	/**
-	 * @param {string | Node} tag
-	 * @param {string} [ns]
-	 * @param {ElementCreationOptions} [elementCreationOption]
+	 * wrap or create a node
+	 * @param {string | Node} tag either a node or a string to use as parameter of document.createElement
+	 * @param {string} [ns] the namespace for that tag (only used if tag is a string)
+	 * @param {ElementCreationOptions} [elementCreationOption] only used if tag is a string
 	 */
 	constructor(tag, ns = builder.namespace.default, elementCreationOption) {
 		if (tag instanceof Node) {
-			this._element = tag
+			this._node = tag
 		} else {
-			this._element = document.createElementNS(ns, tag, elementCreationOption)
+			this._node = document.createElementNS(ns, tag, elementCreationOption)
 		}
 	}
-	
+
 	/**
-	class("test")
-	class(["test"])
-	class({test: true})
-	*/
-	/**
+	 * get or set node classes (if node can have class)
+	 * 	- class() : returns node.classList
+	 * 	- class(string) : add the named class to the node
+	 * 	- class(string[]) : add class each class of the array to the node
+	 * 	- class({[string]: boolean}) : toggle each class named by the keys to the state given by the boolean
+	 *
+	 * array parameters can be nested and can contains object following the object parameter format
+	 *
+	 * if node can't have classes (TextNode or CommentNode), returns undefined
 	 * @param {string, string[], Object.<string, boolean>} args
 	 * @returns {DOMBuilderElement}
 	 */
 	class(...args) {
+		if (! this._node.classList) {return undefined}
+
 		if (args.length === 0) {
-			return this._element.classList
+			return this._node.classList
 		}
-		
+
 		args.flat(FLAT_DEPTH).forEach(classDesc => {
 			if (typeof classDesc === "string" || classDesc instanceof String) {
-				this._element.classList.add(classDesc)
+				this._node.classList.add(classDesc)
 			} else if (typeof classDesc === "object") {
-				Object.entries(classDesc).forEach(([name, value]) => this._element.classList.toggle(name, Boolean(value)))
+				Object.entries(classDesc).forEach(([name, value]) => this._node.classList.toggle(name, Boolean(value)))
 			}
 		})
 		return this
 	}
 
 	/**
+	 * append the given args to the node
 	 * @param {DOMBuilderElement | Node | Object} args
 	 * @returns {DOMBuilderElement}
 	 */
 	append(...args) {
 		args.flat(FLAT_DEPTH).forEach(child => {
 			if (child instanceof DOMBuilderElement) {
-				this._element.appendChild(child.node)
+				this._node.appendChild(child.node)
 			} else if (child instanceof Node) {
-				this._element.appendChild(child)
+				this._node.appendChild(child)
 			} else {
-				this._element.appendChild(builder.text(child.toString()).node)
+				this._node.appendChild(builder.text(child.toString()).node)
 			}
 		})
 		return this
 	}
 
 	/**
+	 * get or set the id of the node
+	 * 	- id() : gets the node id
+	 * 	- id(Object) : sets the id of the node to value.toString()
+	 *
+	 * @throws {TypeError} when value doesn't have a toString() function
 	 * @param {string | Object} [value]
 	 * @returns {DOMBuilderElement|string} this if used as a setter, the current id is used as a getter
 	 */
 	id(value) {
-		if (! this._element instanceof Element) {
-			throw new TypeError("This method doesn't work when element is not instance of the Element class")
-		}
 		if(value !== undefined) {
 			if (typeof value.toString !== "function") {
-				throw new TypeError("value must be a string")
+				throw new TypeError("value must be have a toString()")
 			}
-			this._element.id = value.toString()
+			this._node.id = value.toString()
 			return this
 		}
-		return this._element.id
+		return this._node.id
 	}
 
 	/**
+	 * get or set the textContent of the node
+	 * 	- text() : gets the node textContent
+	 * 	- text(Object) : sets the textContent of the node to value.toString()
+	 *
+	 * @throws {TypeError} when value doesn't have a toString() function
 	 * @param {string | Object} [value]
 	 * @returns {DOMBuilderElement|string} this if used as a setter, the current textContent is used as a getter
 	 */
 	text(value) {
-		if (! this._element instanceof Element) {
-			throw new TypeError("This method doesn't work when element is not instance of the Element class")
-		}
 		if(value !== undefined) {
-			this._element.textContent = value.toString()
+			if (typeof value.toString !== "function") {
+				throw new TypeError("value must be have a toString()")
+			}
+			this._node.textContent = value.toString()
 			return this
 		}
-		return this._element.textContent
+		return this._node.textContent
 	}
 
 	/**
+	 * get or set the innerHTML of the node
+	 * 	- html() : gets the node innerHTML
+	 * 	- html(Object) : sets the innerHTML of the node to value.toString()
+	 *
+	 * if the node is a TextNode or CommentNode, use text() to edit the displayed text
+	 *
+	 * @throws {TypeError} when value doesn't have a toString() function
 	 * @param {string | Object} [value]
 	 * @returns {DOMBuilderElement | string} this if used as a setter, the current innerHTML is used as a getter
 	 */
 	html(value) {
-		if (! this._element instanceof Element) {
-			throw new TypeError("This method doesn't work when element is not instance of the Element class")
-		}
 		if(value !== undefined) {
 			if (typeof value.toString !== "function") {
 				throw new TypeError("value must be a string")
 			}
-			this._element.innerHTML = value.toString()
+			this._node.innerHTML = value.toString()
 			return this
 		}
-		return this._element.innerHTML
+		return this._node.innerHTML
 	}
 
 	/**
-	 * @typedef {string[]} DestructuredAttribute
-	 * @property {string} destructuredAttribute.name
-	 * @property {string} destructuredAttribute.value
-	 */
-	/**
-	 * @param { DestructuredAttribute | Object.<string, string> | Array<Object.<string, string>> | string } args
+	 * get or set node attributes (if node can have attribute)
+	 * 	- attr(string) : returns the attribute whose name is the argument
+	 * 	- attr(string, string) : sets the attribute named by the first arg to the second arg
+	 * 	- attr({[string]: string | undefined | null}) : for each entry of the object :
+	 * 		- if the value is a string, set the attribute named by the key to the value
+	 * 		- if the value is null or undefined, remove the attribute named by the key
+	 *
+	 * args can be an array of objects, following the same rules of when args is an object
+	 *
+	 * if node can't have attributes (TextNode or CommentNode), returns undefined
+	 * @param { Array<Object.<string, string>> | Object.<string, string> | string } args
 	 * @returns { DOMBuilderElement | string }
 	 */
 	attr(...args) {
+		if (! this._node.setAttribute) {return undefined}
+
 		if (args.length === 1 && (typeof args[0] === "string" || args[0] instanceof String)) {
-			return this._element.getAttribute(args[0])
+			return this._node.getAttribute(args[0])
 		}
 
 		if (args.length === 2 &&
@@ -137,9 +163,9 @@ class DOMBuilderElement {
 			for(const attributeName of Object.getOwnPropertyNames(attributeList)) {
 				const value = attributeList[attributeName]
 				if (value !== undefined && value !== null) {
-					this._element.setAttribute(attributeName, value)
+					this._node.setAttribute(attributeName, value)
 				} else {
-					this._element.removeAttribute(attributeName)
+					this._node.removeAttribute(attributeName)
 				}
 			}
 		}
@@ -147,12 +173,16 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * @typedef {string[]} DestructuredEvent
-	 * @property {string} destructuredAttribute.name
-	 * @property {function} destructuredAttribute.handler
-	 */
-	/**
-	 * @param { DestructuredEvent | Object.<string, function> | Array<Object.<string, function>> } args
+	 * set events listener for the node
+	 * if the event name starts with "on" ("onclick", "onchange", ...) it sets that property of the node to the function
+	 * 		node.onclick = function
+	 * otherwise, it calls addEventListener(name, function) on the node
+	 *
+	 * 	- events(string, function) : set the event named by the string argument to the function argument
+	 * 	- events({[string]: function}) : set the events named by the keys to the function stored in the corresponding values
+	 *
+	 * args can be an array of objects, following the same rules of when args is an object
+	 * @param { string | function | Object.<string, function> | Array<Object.<string, function>> } args
 	 * @returns {DOMBuilderElement}
 	 */
 	events(...args) {
@@ -168,9 +198,9 @@ class DOMBuilderElement {
 				const handler = eventList[eventName]
 				if (typeof handler === "function") {
 					if (eventName.startsWith("on")) {
-						this._element[eventName] = handler
+						this._node[eventName] = handler
 					} else {
-						this._element.addEventListener(eventName, handler)
+						this._node.addEventListener(eventName, handler)
 					}
 				}
 			}
@@ -179,40 +209,39 @@ class DOMBuilderElement {
 	}
 
 	/**
+	 * call the given function with the node as argument
 	 * @param {function(Node)} callback
 	 * @return {DOMBuilderElement}
 	 */
 	cb(callback) {
-		callback(this._element)
+		callback(this._node)
 		return this
 	}
 
 	/**
+	 * gets the wrapped node
 	 * @returns {Node}
 	 */
 	get node() {
-		return this._element
+		return this._node
 	}
 
 	/**
-	 * deep clone the current element
+	 * create a copy wrapping a deep clone of the node
 	 * @returns {DOMBuilderElement}
 	 */
 	get clone() {
-		return builder(this._element.cloneNode(true))
+		return builder(this._node.cloneNode(true))
 	}
 }
-
 
 class BuilderArgs {
 	/**
 	 * @type {string}
-	 * @private
 	 */
 	_namespace
 	/**
 	 * @type {ElementCreationOptions}
-	 * @private
 	 */
 	_elementCreationOptions
 
@@ -239,8 +268,9 @@ class BuilderArgs {
 }
 
 /**
- * @param {string | Node | DOMBuilderElement} tag
- * @param {!BuilderArgs} [args]
+ * wrap a DOM element in order to make it less verbose to use
+ * @param {string | Node | DOMBuilderElement} tag if string, the tagname of a newly created element, else the element to wrap
+ * @param {!BuilderArgs} [args] some args for the creation of new tags
  * @returns {DOMBuilderElement}
  */
 function builder(tag, args) {
@@ -249,6 +279,10 @@ function builder(tag, args) {
 	return new DOMBuilderElement(tag, builderArgs.namespace, builderArgs.elementCreationOptions)
 }
 
+/**
+ * some namespace constants
+ * @type {{[string]: string}}
+ */
 builder.namespace = {
 	html: "http://www.w3.org/1999/xhtml",
 	svg: "http://www.w3.org/2000/svg",
@@ -260,26 +294,20 @@ builder.namespace = {...builder.namespace, ...{
 	SVG: builder.namespace.svg,
 	MATH_ML: builder.namespace.mathML
 }}
-builder.namespace = {...builder.namespace, ...{
-	default: builder.namespace.html,
-	HTML: builder.namespace.html,
-	SVG: builder.namespace.svg,
-	MATH_ML: builder.namespace.mathML
-}}
 builder.ns = builder.namespace
 Object.freeze(builder.namespace)
 
 /**
- * generate a comment node
- * @param {string} comment
+ * generate a wrapped comment node
+ * @param {string} comment the text contained in the created CommentNode
  * @returns {DOMBuilderElement}
  */
 builder.comment = comment => {
 	return builder(document.createComment(comment))
 }
 /**
- * generate a text node
- * @param {string} content
+ * generate a wrapped text node
+ * @param {string} content the text contained in the created TextNode
  * @returns {DOMBuilderElement}
  */
 builder.text = content => {
@@ -294,12 +322,12 @@ builder.text = content => {
  * @param {number} index
  * @param {DOMBuilderElement[]} array
  */
-
 /**
- * @param {number} count
- * @param {DOMBuilderElement | Node | Object} tag
- * @param {BuilderArgs} [builderArgs]
- * @param {builder~repeatCallback} [forEachCallback]
+ * clone the inputted element the number of time asked, then call the forEachCallback for each newly created element
+ * @param {number} count the number of element to create
+ * @param {DOMBuilderElement | Node | Object} tag see {@link builder}
+ * @param {BuilderArgs} [builderArgs] see {@link builder}
+ * @param {builder~repeatCallback} [forEachCallback] function to call on each of the created elements
  * @return {DOMBuilderElement[]}
  */
 builder.repeat = (count, tag, builderArgs, forEachCallback) => {
