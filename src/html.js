@@ -256,6 +256,45 @@ class DOMBuilderElement {
 	}
 
 	/**
+	 * easy access to element.querySelector
+	 * @param {string} query
+	 * @param {true} nakedNode
+	 * @return {Node|null} null when node doesn't have a element.querySelector method
+	 *//**
+	 * easy access to element.querySelector
+	 * @param {string} query
+	 * @param {false} [nakedNode = false]
+	 * @return {DOMBuilderElement|null} null when node doesn't have a element.querySelector method
+	 */
+	querySelector(query, nakedNode = false) {
+		if (this._node.querySelector) {
+			const node = this._node.querySelector(query)
+			return nakedNode ? node : new DOMBuilderElement(node)
+		}
+		return null
+	}
+
+	/**
+	 * easy access to element.querySelectorAll
+	 * @param {string} query
+	 * @param {true} nakedNodes
+	 * @return {NodeList|null} null when node doesn't have a element.querySelector method
+	 */	/**
+	 * easy access to element.querySelectorAll
+	 * @param {string} query
+	 * @param {false} [nakedNodes = false]
+	 * @return {DOMBuilderElement[]|null} null when node doesn't have a element.querySelector method
+	 */
+	querySelectorAll(query, nakedNodes = false) {
+		if (this._node.querySelectorAll) {
+			const nodes = this._node.querySelectorAll(query)
+			return nakedNodes ? nodes : [...nodes].map(node => new DOMBuilderElement(node))
+		}
+		return null
+	}
+
+
+	/**
 	 * @callback DOMBuilderElement~nodeCallback
 	 * @param {Node} node the node
 	 */
