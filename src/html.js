@@ -22,25 +22,28 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * get or set node classes (if node can have class)
-	 * 	- class() : returns node.classList
-	 * 	- class(string) : add the named class to the node
-	 * 	- class(string[]) : add class each class of the array to the node
-	 * 	- class({[string]: boolean}) : toggle each class named by the keys to the state given by the boolean
-	 *
-	 * array parameters can be nested and can contains object following the object parameter format
-	 *
+	 * get node classes (if node can have class)
 	 * if node can't have classes (TextNode or CommentNode), returns undefined
-	 * @param {string, string[], Object.<string, boolean>} args
-	 * @returns {DOMBuilderElement}
+	 * @returns {?DOMTokenList}
+	 *//**
+	 * set node classes (if node can have class)
+	 * 	- class(string) : add the named class to the node
+	 * 	- class(string[]) : add each class of the array to the node
+	 * 	- class({[k: string]: boolean}) : toggle each class named by the keys to the state given by the boolean value
+	 *
+	 * array parameters can be nested and can contain object following the object parameter format
+	 *
+	 * if node can't have classes (TextNode or CommentNode), does nothing and returns this
+	 * @param {string | string[] | Object<string, boolean>} args
+	 * @returns {this}
 	 */
 	class(...args) {
-		if (! this._node.classList) {return undefined}
-
 		if (args.length === 0) {
+			if (! this._node.classList) {return undefined}
 			return this._node.classList
 		}
 
+		if (! this._node.classList) {return this}
 		args.flat(FLAT_DEPTH).forEach(classDesc => {
 			if (typeof classDesc === "string" || classDesc instanceof String) {
 				this._node.classList.add(classDesc)
@@ -53,8 +56,8 @@ class DOMBuilderElement {
 
 	/**
 	 * append the given args to the node
-	 * @param {DOMBuilderElement | Node | Object} args
-	 * @returns {DOMBuilderElement}
+	 * @param {DOMBuilderElement | Node | Object | Array<DOMBuilderElement | Node | Object>} args
+	 * @returns {this}
 	 */
 	append(...args) {
 		args.flat(FLAT_DEPTH).forEach(child => {
@@ -70,13 +73,42 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * get or set the id of the node
-	 * 	- id() : gets the node id
-	 * 	- id(Object) : sets the id of the node to value.toString()
+	 * less verbose way to call append(htmlBuilder.repeat(buildCallback))
+	 *
+	 * @param {builder~buildCallback} buildCallback function to call on each of the created elements
+	 * @return {this}
+	 * @see {@link builder.repeat}
+	 *//**
+	 * less verbose way to call append(htmlBuilder.repeat(count, repeatCallback))
+	 *
+	 * @param {number} count the number of element to create
+	 * @param {builder~repeatCallback} repeatCallback function to call on each of the created elements
+	 * @return {this}
+	 * @see {@link builder.repeat}
+	 *//**
+	 * less verbose way to call append(htmlBuilder.repeat(count, tag, builderArgs, repeatCallback))
+	 *
+	 * @param {number} count the number of element to create
+	 * @param {DOMBuilderElement | Node | Object} tag see {@link builder}
+	 * @param {BuilderArgs} [builderArgs] see {@link builder}
+	 * @param {builder~repeatCallback} [repeatCallback] function to call on each of the created elements
+	 * @return {this}
+	 * @see {@link builder.repeat}
+	 */
+	appendRepeat(count, tag, builderArgs, repeatCallback) {
+		return this.append(builder.repeat(count, tag, builderArgs, repeatCallback))
+	}
+
+	/**
+	 * get the id of the node
+	 *
+	 * @returns {string} the current id
+	 *//**
+	 * set the id of the node
 	 *
 	 * @throws {TypeError} when value doesn't have a toString() function
-	 * @param {string | Object} [value]
-	 * @returns {DOMBuilderElement|string} this if used as a setter, the current id is used as a getter
+	 * @param {string | Object} value
+	 * @returns {this}
 	 */
 	id(value) {
 		if(value !== undefined) {
@@ -90,13 +122,15 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * get or set the textContent of the node
-	 * 	- text() : gets the node textContent
-	 * 	- text(Object) : sets the textContent of the node to value.toString()
+	 * get the textContent of the node
+	 *
+	 * @returns {string} the current textContent
+	 *//**
+	 * set the textContent of the node
 	 *
 	 * @throws {TypeError} when value doesn't have a toString() function
-	 * @param {string | Object} [value]
-	 * @returns {DOMBuilderElement|string} this if used as a setter, the current textContent is used as a getter
+	 * @param {string | Object} value
+	 * @returns {this}
 	 */
 	text(value) {
 		if(value !== undefined) {
@@ -110,30 +144,44 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * get or set the innerHTML of the node
-	 * 	- html() : gets the node innerHTML
-	 * 	- html(Object) : sets the innerHTML of the node to value.toString()
+	 * get the innerHTML of the node
 	 *
-	 * if the node is a TextNode or CommentNode, use text() to edit the displayed text
+	 * if the node doesn't have a innerHTML, calls text()
+	 *
+	 * @returns {string} the current innerHTML
+	 *//**
+	 * set the textContent of the node
+	 *
+	 * if the node doesn't have a innerHTML, calls text()
 	 *
 	 * @throws {TypeError} when value doesn't have a toString() function
-	 * @param {string | Object} [value]
-	 * @returns {DOMBuilderElement | string} this if used as a setter, the current innerHTML is used as a getter
+	 * @param {string | Object} value
+	 * @returns {this}
 	 */
 	html(value) {
 		if(value !== undefined) {
 			if (typeof value.toString !== "function") {
 				throw new TypeError("value must be a string")
 			}
-			this._node.innerHTML = value.toString()
+			if (typeof this._node.innerHTML === "string") {
+				this._node.innerHTML = value.toString()
+			} else {
+				this.text(value.toString())
+			}
 			return this
 		}
-		return this._node.innerHTML
+		return this._node.innerHTML ?? this.text()
 	}
 
 	/**
-	 * get or set node attributes (if node can have attribute)
-	 * 	- attr(string) : returns the attribute whose name is the argument
+	 * get node attribute by name
+	 *
+	 * if node can't have attributes (TextNode or CommentNode), returns undefined
+	 *
+	 * @param {string} name
+	 * @returns {string} the attribute value
+	 *//**
+	 * set node attributes
 	 * 	- attr(string, string) : sets the attribute named by the first arg to the second arg
 	 * 	- attr({[string]: string | undefined | null}) : for each entry of the object :
 	 * 		- if the value is a string, set the attribute named by the key to the value
@@ -141,17 +189,16 @@ class DOMBuilderElement {
 	 *
 	 * args can be an array of objects, following the same rules of when args is an object
 	 *
-	 * if node can't have attributes (TextNode or CommentNode), returns undefined
+	 * if node can't have attributes (TextNode or CommentNode), does nothing and returns this
 	 * @param { Array<Object.<string, string>> | Object.<string, string> | string } args
-	 * @returns { DOMBuilderElement | string }
+	 * @returns {this}
 	 */
 	attr(...args) {
-		if (! this._node.setAttribute) {return undefined}
-
 		if (args.length === 1 && (typeof args[0] === "string" || args[0] instanceof String)) {
-			return this._node.getAttribute(args[0])
+			return this._node.getAttribute?.(args[0])
 		}
 
+		if (! this._node.setAttribute) {return undefined}
 		if (args.length === 2 &&
 			typeof args[0] === "string" || args[0] instanceof String &&
 			typeof args[1] === "string" || args[1] instanceof String
@@ -183,9 +230,9 @@ class DOMBuilderElement {
 	 *
 	 * args can be an array of objects, following the same rules of when args is an object
 	 * @param { string | function | Object.<string, function> | Array<Object.<string, function>> } args
-	 * @returns {DOMBuilderElement}
+	 * @returns {this}
 	 */
-	events(...args) {
+	event(...args) {
 		if (args.length === 2 &&
 			typeof args[0] === "string" || args[0] instanceof String &&
 			typeof args[1] === "function"
@@ -209,9 +256,13 @@ class DOMBuilderElement {
 	}
 
 	/**
+	 * @callback DOMBuilderElement~nodeCallback
+	 * @param {Node} node the node
+	 */
+	/**
 	 * call the given function with the node as argument
-	 * @param {function(Node)} callback
-	 * @return {DOMBuilderElement}
+	 * @param {DOMBuilderElement~nodeCallback} callback
+	 * @return {this}
 	 */
 	cb(callback) {
 		callback(this._node)
@@ -239,36 +290,42 @@ class BuilderArgs {
 	/**
 	 * @type {string}
 	 */
-	_namespace
+	#namespace
 	/**
 	 * @type {ElementCreationOptions}
 	 */
-	_elementCreationOptions
+	#elementCreationOptions
 
 	/**
-	 * @param {string} [namespace]
-	 * @param {string} [ns]
-	 * @param {ElementCreationOptions} [elementCreationOptions]
-	 * @param {ElementCreationOptions} [options]
-	 * @param {ElementCreationOptions} [opt]
+	 * @param {object} paramBag
+	 * @property {string} [namespace]
+	 * @property {string} [ns]
+	 * @property {ElementCreationOptions} [elementCreationOptions]
+	 * @property {ElementCreationOptions} [options]
+	 * @property {ElementCreationOptions} [opt]
 	 */
 	constructor({namespace, ns, elementCreationOptions, options, opt} = {}) {
-		this._namespace = ns ?? namespace ?? builder.namespace.default
-		this._elementCreationOptions = opt ?? options ?? elementCreationOptions ?? {}
+		this.#namespace = ns ?? namespace ?? builder.namespace.default
+		this.#elementCreationOptions = opt ?? options ?? elementCreationOptions ?? {}
 	}
 
 	/**
 	 * @returns {string}
 	 */
-	get namespace() {return this._namespace}
+	get namespace() {return this.#namespace}
 	/**
 	 * @returns {ElementCreationOptions}
 	 */
-	get elementCreationOptions() {return this._elementCreationOptions}
+	get elementCreationOptions() {return this.#elementCreationOptions}
 }
 
 /**
+ * @namespace builder
+ */
+/**
  * wrap a DOM element in order to make it less verbose to use
+ *
+ * @memberOf builder
  * @param {string | Node | DOMBuilderElement} tag if string, the tagname of a newly created element, else the element to wrap
  * @param {!BuilderArgs} [args] some args for the creation of new tags
  * @returns {DOMBuilderElement}
@@ -280,8 +337,9 @@ function builder(tag, args) {
 }
 
 /**
- * some namespace constants
- * @type {{[string]: string}}
+ * some xml namespace constants
+ * @type {Object<string, string>}
+ * @memberOf builder
  */
 builder.namespace = {
 	html: "http://www.w3.org/1999/xhtml",
@@ -289,16 +347,17 @@ builder.namespace = {
 	mathML : "http://www.w3.org/1998/Math/MathML"
 }
 builder.namespace = {...builder.namespace, ...{
-	default: builder.namespace.html,
-	HTML: builder.namespace.html,
-	SVG: builder.namespace.svg,
-	MATH_ML: builder.namespace.mathML
-}}
+		default: builder.namespace.html,
+		HTML: builder.namespace.html,
+		SVG: builder.namespace.svg,
+		MATH_ML: builder.namespace.mathML
+	}}
 builder.ns = builder.namespace
 Object.freeze(builder.namespace)
 
 /**
  * generate a wrapped comment node
+ * @memberOf builder
  * @param {string} comment the text contained in the created CommentNode
  * @returns {DOMBuilderElement}
  */
@@ -307,6 +366,7 @@ builder.comment = comment => {
 }
 /**
  * generate a wrapped text node
+ * @memberOf builder
  * @param {string} content the text contained in the created TextNode
  * @returns {DOMBuilderElement}
  */
@@ -315,32 +375,86 @@ builder.text = content => {
 }
 
 /**
- * type of the callback executed on each element generated by the builder.repeat fonction
+ * type of the callback executed on each element generated by the builder.repeat function when count is given
  *
  * @callback builder~repeatCallback
- * @param {DOMBuilderElement} element
- * @param {number} index
- * @param {DOMBuilderElement[]} array
+ * @param {DOMBuilderElement} element current element
+ * @param {number} index current index
+ * @param {DOMBuilderElement[]} array the array
+ * @return {?DOMBuilderElement} if always undefined, does a foreach, else does a map
  */
 /**
+ * type of the callback executed on each element generated by the builder.repeat function when there is no count given
+ *
+ * @callback builder~buildCallback
+ * @param {number} index current index
+ * @return {?DOMBuilderElement} the created element
+ */
+/**
+ * create new elements as long as buildCallback returns something different from undefined
+ * @memberOf builder
+ *
+ * @param {builder~buildCallback} buildCallback function to call on each of the created elements
+ * @return {DOMBuilderElement[]}
+ *//**
  * clone the inputted element the number of time asked, then call the forEachCallback for each newly created element
+ * if tag and repeatCallback are both undefined, return an array of size count filled with nulls
+ * @memberOf builder
+ *
+ * @param {number} count the number of element to create
+ * @param {builder~repeatCallback} repeatCallback function to call on each of the created elements
+ * @return {DOMBuilderElement[]}
+ *//**
+ * clone the inputted element the number of time asked, then call the forEachCallback for each newly created element
+ * if tag and repeatCallback are both undefined, return an array of size count filled with nulls
+ * @memberOf builder
+ *
  * @param {number} count the number of element to create
  * @param {DOMBuilderElement | Node | Object} tag see {@link builder}
  * @param {BuilderArgs} [builderArgs] see {@link builder}
- * @param {builder~repeatCallback} [forEachCallback] function to call on each of the created elements
+ * @param {builder~repeatCallback} [repeatCallback] function to call on each of the created elements
  * @return {DOMBuilderElement[]}
  */
-builder.repeat = (count, tag, builderArgs, forEachCallback) => {
-	let array = []
-	if (tag instanceof Node) {
-		array = Array(count).fill(true).map(() => builder(tag).clone)
-	} else if (tag instanceof DOMBuilderElement) {
-		array = Array(count).fill(true).map(() => tag.clone)
-	} else {
-		array = Array(count).fill(true).map(() => builder(tag.toString(), builderArgs))
+builder.repeat = (count, tag, builderArgs, repeatCallback) => {
+	if (typeof count === "function") {
+		repeatCallback = count
+		let i = 0
+		let finalArray = []
+		let ret = repeatCallback(i++)
+		while (ret !== undefined) {
+			finalArray.push(ret)
+			ret = repeatCallback(i++)
+		}
+		return finalArray
+	} else if (typeof tag === "function") {
+		repeatCallback = tag
+		tag = undefined
+		builderArgs = undefined
+	} else if (typeof builderArgs === "function") {
+		repeatCallback = builderArgs
+		builderArgs = undefined
 	}
-	if (forEachCallback && typeof forEachCallback === "function") {
-		array.forEach(forEachCallback)
+
+	let array = Array(count).fill(null)
+
+	if (tag !== undefined) {
+		if (tag instanceof Node) {
+			array = array.map(() => builder(tag).clone)
+		} else if (tag instanceof DOMBuilderElement) {
+			array = array.map(() => tag.clone)
+		} else {
+			array = array.map(() => builder(tag.toString(), builderArgs))
+		}
+	}
+	if (repeatCallback && typeof repeatCallback === "function") {
+		if (tag !== undefined) {
+			let newArray = array.map(repeatCallback)
+			if (! newArray.every(e => e === undefined)) {
+				array = newArray
+			}
+		} else {
+			array = array.map(repeatCallback)
+		}
 	}
 	return array
 }

@@ -1,0 +1,26 @@
+{
+  "name": "htmlbuilder",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/html.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "doc": "npx jsdoc src/html.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonatjano/HtmlBuilder.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jonatjano/HtmlBuilder/issues"
+  },
+  "homepage": "https://github.com/jonatjano/HtmlBuilder#README.md",
+  "devDependencies": {
+    "jsdoc": "^4.0.0"
+  }
+}
