@@ -309,6 +309,52 @@ class DOMBuilderElement {
 	}
 
 	/**
+	 * replace the node with a clean new node of the same tag and namespace
+	 * @param {boolean} [keepId = true] if true, the id will be kept
+	 * @return {this}
+	 */
+	reset(keepId = true) {
+		let newNode = null
+		if (this._node.tagName) {
+			newNode = document.createElementNS(this._node.namespaceURI, this._node.tagName.toLowerCase(), this._node._elementCreationOptions ?? {})
+		} else {
+			switch (this._node.nodeType) {
+				case Node.COMMENT_NODE: {
+					newNode = document.createComment(this._node.textContent)
+					break
+				}
+				case Node.TEXT_NODE: {
+					newNode = document.createTextNode(this._node.textContent)
+					break
+				}
+				case Node.CDATA_SECTION_NODE: {
+					newNode = document.createCDATASection(this._node.textContent)
+					break
+				}
+			}
+		}
+		if (newNode === null) {
+			throw "Couldn't create a new node"
+		}
+		if (keepId && this._node.id && newNode.id) {
+			newNode = this._node.id
+		}
+
+		this._node.replaceWith(newNode)
+		this._node = newNode
+		return this
+	}
+
+	/**
+	 * remove every child element
+	 * @return {this}
+	 */
+	empty() {
+		while (this._node.childNodes.length) { this._node.firstChild.remove(); }
+		return this
+	}
+
+	/**
 	 * gets the wrapped node
 	 * @returns {Node}
 	 */
