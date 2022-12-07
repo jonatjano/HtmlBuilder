@@ -1,4 +1,6 @@
 const FLAT_DEPTH = 2
+const PARSER_TOKEN_COUNT = 5
+const PARSER_TOKEN_HTML_LOOP = "html-loop"
 
 class DOMBuilderElement {
 	/**
@@ -543,5 +545,158 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 	}
 	return array
 }
+
+function parserVisitor(element, args, symbolValues, parserTokenTag) {
+	if (element.children) {
+		if (element.tagName === parserTokenTag.toUpperCase()) {
+			const input = args[+element.textContent]
+			if (typeof input === "symbol") {
+				element.outerHTML = symbolValues.get(input)
+			} else if (typeof input === "object") {
+				element.outerHTML = JSON.stringify(input)
+			} else {
+				element.outerHTML = input.toString()
+			}
+		}
+
+		if (element.attributes.length) {
+			const attributes = [...element.attributes]
+			const doc = document.createElement("div")
+			attributes.forEach(attrib => {
+				if (attrib.name === PARSER_TOKEN_HTML_LOOP) {
+					const validateIndexArg = arg => typeof arg === "symbol" && symbolValues.has(arg)
+					const validateValueArg = arg => typeof arg === "symbol" && symbolValues.has(arg)
+					const validateIterableArg = arg => Array.isArray(arg) || arg instanceof Map || arg instanceof Set || typeof arg === "object"
+					doc.innerHTML = attrib.value
+					const nodes = doc.childNodes
+					const parameters = {
+						index: null,
+						value: null,
+						iterable: []
+					}
+					if (nodes.length === 2 &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent.startsWith(";")
+					) {
+						const valueArg = args[+nodes[0].textContent]
+						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_HTML_LOOP} value argument must be a parser symbol` }
+
+						const iterableArg = JSON.parse(nodes[1].textContent.substring(1))
+						if (! validateIterableArg(iterableArg)) { throw `${PARSER_TOKEN_HTML_LOOP} iterable argument must be iterable` }
+
+						parameters.value = valueArg
+						parameters.iterable = iterableArg
+					} else if (nodes.length === 3 &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === ";" &&
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase()
+					) {
+						const valueArg = args[+nodes[0].textContent]
+						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_HTML_LOOP} value argument must be a parser symbol` }
+
+						const iterableArg = args[+nodes[2].textContent]
+						if (! validateIterableArg(iterableArg)) { throw `${PARSER_TOKEN_HTML_LOOP} iterable argument must be iterable` }
+
+						parameters.value = valueArg
+						parameters.iterable = iterableArg
+					} else if (nodes.length === 4 &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === "," &&
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase() &&
+						nodes[3].nodeType === Node.TEXT_NODE && nodes[3].textContent.startsWith(";")
+					) {
+						const indexArg = args[+nodes[0].textContent]
+						if (! validateIndexArg(indexArg)) { throw `${PARSER_TOKEN_HTML_LOOP} index argument must be a parser symbol` }
+
+						const valueArg = args[+nodes[2].textContent]
+						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_HTML_LOOP} value argument must be a parser symbol` }
+
+						const iterableArg = JSON.parse(nodes[3].textContent.substring(1))
+						if (! validateIterableArg(iterableArg)) { throw `${PARSER_TOKEN_HTML_LOOP} iterable argument must be iterable` }
+
+						parameters.index = indexArg
+						parameters.value = valueArg
+						parameters.iterable = iterableArg
+					} else if (nodes.length === 5 &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === "," &&
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase() &&
+						nodes[3].nodeType === Node.TEXT_NODE && nodes[3].textContent === ";" &&
+						nodes[4].nodeType === Node.ELEMENT_NODE && nodes[4].tagName === parserTokenTag.toUpperCase()
+					) {
+						const indexArg = args[+nodes[0].textContent]
+						if (! validateIndexArg(indexArg)) { throw `${PARSER_TOKEN_HTML_LOOP} index argument must be a parser symbol` }
+
+						const valueArg = args[+nodes[2].textContent]
+						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_HTML_LOOP} value argument must be a parser symbol` }
+
+						const iterableArg = args[+nodes[4].textContent]
+						if (! validateIterableArg(iterableArg)) { throw `${PARSER_TOKEN_HTML_LOOP} iterable argument must be iterable` }
+
+						parameters.index = indexArg
+						parameters.value = valueArg
+						parameters.iterable = iterableArg
+					} else {
+						throw `${PARSER_TOKEN_HTML_LOOP} parameters are not valid`
+					}
+
+					const template = element.cloneNode(true)
+					template.removeAttribute(PARSER_TOKEN_HTML_LOOP)
+					const loopCb = (index, value) => {
+						if (parameters.index) {
+							symbolValues.set(parameters.index, index)
+						}
+						symbolValues.set(parameters.value, value)
+
+						const newElement = template.cloneNode(true)
+						element.insertAdjacentElement('beforebegin', newElement)
+						parserVisitor(newElement, args, symbolValues, parserTokenTag)
+					}
+
+					if (parameters.iterable instanceof Map || parameters.iterable instanceof Set) {
+						parameters.iterable.forEach((value, key) => loopCb(key, value))
+					} else if (Array.isArray(parameters.iterable)) {
+						for (const index in parameters.iterable) { loopCb(index, parameters.iterable[index]) }
+					} else {
+						const entries = Object.entries(parameters.iterable)
+						for (const entry of entries) { loopCb(...entry) }
+					}
+					element.remove()
+
+				} else if (attrib.value.includes(parserTokenTag)) {
+					doc.innerHTML = attrib.value
+					parserVisitor(doc, args, symbolValues, parserTokenTag)
+					attrib.value = doc.innerHTML
+				}
+			})
+		}
+
+		;[...element.children].forEach(child => parserVisitor(child, args, symbolValues, parserTokenTag))
+	}
+}
+function parser(stringParts, ...args) {
+	// find a non-used tag
+	let tokenTag = "htmlbuilder-token"
+	let doc = document.createElement("div")
+	doc.innerHTML = stringParts.join("")
+	while (doc.querySelector(tokenTag) !== null) { tokenTag += "z" }
+
+	// use that tag as a placeholder for args
+	let index = 0
+	let partialString = ""
+	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${tokenTag}>${index}</${tokenTag}>` : ""); index++ }
+	doc.innerHTML = partialString
+
+	// visit doc recursively and look for things to replace and stuff
+	const symbolValues = new Map(args.filter(arg => typeof arg === "symbol").map(symbol => ([symbol, null])))
+	;[...doc.children].forEach(node => parserVisitor(node, args, symbolValues, tokenTag))
+
+	// put things in a fragment for a clean result when the result has multiple root tags
+	const fragment = document.createDocumentFragment()
+	fragment.append(...doc.children)
+	return fragment
+}
+
+builder.parse = cb => cb(parser, ...Array(PARSER_TOKEN_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse token ${i}`)))
 
 export default builder
