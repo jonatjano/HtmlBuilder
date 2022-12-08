@@ -2,6 +2,9 @@ const FLAT_DEPTH = 2
 const PARSER_TOKEN_COUNT = 5
 const PARSER_TOKEN_HTML_LOOP = "html-loop"
 
+/**
+ * Wrapper around html nodes
+ */
 class DOMBuilderElement {
 	/**
 	 * the wrapped node
@@ -92,7 +95,7 @@ class DOMBuilderElement {
 	 *
 	 * @param {number} count the number of element to create
 	 * @param {DOMBuilderElement | Node | Object} tag see {@link builder}
-	 * @param {BuilderArgs} [builderArgs] see {@link builder}
+	 * @param {builder~BuilderArgs} [builderArgs] see {@link builder}
 	 * @param {builder~repeatCallback} [repeatCallback] function to call on each of the created elements
 	 * @return {this}
 	 * @see {@link builder.repeat}
@@ -152,7 +155,7 @@ class DOMBuilderElement {
 	 *
 	 * @returns {string} the current innerHTML
 	 *//**
-	 * set the textContent of the node
+	 * set the innerHTML of the node
 	 *
 	 * if the node doesn't have a innerHTML, calls text()
 	 *
@@ -222,14 +225,13 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * set events listener for the node
-	 * if the event name starts with "on" ("onclick", "onchange", ...) it sets that property of the node to the function
-	 * 		node.onclick = function
-	 * otherwise, it calls addEventListener(name, function) on the node
-	 *
-	 * 	- events(string, function) : set the event named by the string argument to the function argument
-	 * 	- events({[string]: function}) : set the events named by the keys to the function stored in the corresponding values
-	 *
+	 * set events listener for the node<br/>
+	 * if the event name starts with "on" ("onclick", "onchange", ...) it sets that property of the node to the function (node.onclick = function)<br/>
+	 * otherwise, it calls addEventListener(name, function) on the node<br/>
+	 * <br/>
+	 * 	- events(string, function) : set the event named by the string argument to the function argument<br/>
+	 * 	- events(Object&lt;string, function&gt;) : set the events named by the keys to the function stored in the corresponding values<br/>
+	 * <br/>
 	 * args can be an array of objects, following the same rules of when args is an object
 	 * @param { string | function | Object.<string, function> | Array<Object.<string, function>> } args
 	 * @returns {this}
@@ -258,15 +260,15 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * easy access to element.querySelector
+	 * easy access to node.querySelector
 	 * @param {string} query
 	 * @param {true} nakedNode
-	 * @return {Node|null} null when node doesn't have a element.querySelector method
+	 * @return {Node|null} null if node doesn't have querySelector method
 	 *//**
-	 * easy access to element.querySelector
+	 * easy access to node.querySelector
 	 * @param {string} query
 	 * @param {false} [nakedNode = false]
-	 * @return {DOMBuilderElement|null} null when node doesn't have a element.querySelector method
+	 * @return {DOMBuilderElement|null} null if node doesn't have querySelector method
 	 */
 	querySelector(query, nakedNode = false) {
 		if (this._node.querySelector) {
@@ -277,15 +279,15 @@ class DOMBuilderElement {
 	}
 
 	/**
-	 * easy access to element.querySelectorAll
+	 * easy access to node.querySelectorAll
 	 * @param {string} query
 	 * @param {true} nakedNodes
-	 * @return {NodeList|null} null when node doesn't have a element.querySelector method
-	 */	/**
-	 * easy access to element.querySelectorAll
+	 * @return {NodeList|null} null if node doesn't have querySelectorAll method
+	 *//**
+	 * easy access to node.querySelectorAll
 	 * @param {string} query
 	 * @param {false} [nakedNodes = false]
-	 * @return {DOMBuilderElement[]|null} null when node doesn't have a element.querySelector method
+	 * @return {DOMBuilderElement[]|null} null if node doesn't have querySelectorAll method
 	 */
 	querySelectorAll(query, nakedNodes = false) {
 		if (this._node.querySelectorAll) {
@@ -312,7 +314,7 @@ class DOMBuilderElement {
 
 	/**
 	 * replace the node with a clean new node of the same tag and namespace
-	 * @param {boolean} [keepId = true] if true, the id will be kept
+	 * @param {boolean} [keepId = true] if true, the id of the node will be kept
 	 * @return {this}
 	 */
 	reset(keepId = true) {
@@ -373,53 +375,32 @@ class DOMBuilderElement {
 	}
 }
 
-class BuilderArgs {
-	/**
-	 * @type {string}
-	 */
-	#namespace
-	/**
-	 * @type {ElementCreationOptions}
-	 */
-	#elementCreationOptions
-
-	/**
-	 * @param {object} paramBag
-	 * @property {string} [namespace]
-	 * @property {string} [ns]
-	 * @property {ElementCreationOptions} [elementCreationOptions]
-	 * @property {ElementCreationOptions} [options]
-	 * @property {ElementCreationOptions} [opt]
-	 */
-	constructor({namespace, ns, elementCreationOptions, options, opt} = {}) {
-		this.#namespace = ns ?? namespace ?? builder.namespace.default
-		this.#elementCreationOptions = opt ?? options ?? elementCreationOptions ?? {}
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	get namespace() {return this.#namespace}
-	/**
-	 * @returns {ElementCreationOptions}
-	 */
-	get elementCreationOptions() {return this.#elementCreationOptions}
-}
-
 /**
  * @namespace builder
  */
+
+/**
+ * @typedef builder~BuilderArgs
+ * @property {string} namespace
+ * @property {string} ns
+ * @property {ElementCreationOptions} elementCreationOptions
+ * @property {ElementCreationOptions} options
+ */
+
 /**
  * wrap a DOM element in order to make it less verbose to use
  *
  * @memberOf builder
  * @param {string | Node | DOMBuilderElement} tag if string, the tagname of a newly created element, else the element to wrap
- * @param {!BuilderArgs} [args] some args for the creation of new tags
+ * @param {builder~BuilderArgs} [args] some args for the creation of new tags
  * @returns {DOMBuilderElement}
  */
 function builder(tag, args) {
 	if (tag instanceof DOMBuilderElement) { return tag }
-	const builderArgs = new BuilderArgs(args)
+	const builderArgs = {
+		namespace: args?.namespace ?? args?.ns,
+		elementCreationOptions: args?.elementCreationOptions ?? args?.options
+	}
 	return new DOMBuilderElement(tag, builderArgs.namespace, builderArgs.elementCreationOptions)
 }
 
@@ -498,7 +479,7 @@ builder.text = content => {
  *
  * @param {number} count the number of element to create
  * @param {DOMBuilderElement | Node | Object} tag see {@link builder}
- * @param {BuilderArgs} [builderArgs] see {@link builder}
+ * @param {builder~BuilderArgs} [builderArgs] see {@link builder}
  * @param {builder~repeatCallback} [repeatCallback] function to call on each of the created elements
  * @return {DOMBuilderElement[]}
  */
@@ -546,6 +527,9 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 	return array
 }
 
+/**
+ * @private
+ */
 function parserVisitor(element, args, symbolValues, parserTokenTag) {
 	if (element.children) {
 		if (element.tagName === parserTokenTag.toUpperCase()) {
@@ -674,6 +658,10 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 		;[...element.children].forEach(child => parserVisitor(child, args, symbolValues, parserTokenTag))
 	}
 }
+
+/**
+ * @private
+ */
 function parser(stringParts, ...args) {
 	// find a non-used tag
 	let tokenTag = "htmlbuilder-token"
@@ -697,6 +685,26 @@ function parser(stringParts, ...args) {
 	return fragment
 }
 
+/**
+ * @callback builder~parser
+ * @description must be used as a template literal tag
+ * @param {string[]} stringParts
+ * @param {...*} args
+ * @return {DocumentFragment}
+ */
+/**
+ * @callback builder~parserCallback
+ * @memberOf builder
+ * @param {builder~parser} parser
+ * @param {...Symbol} parserToken
+ * @return {DocumentFragment}
+ */
+/**
+ * parse some html code into a DocumentFragment
+ * @memberOf builder
+ * @param {builder~parserCallback} cb
+ * @return {DocumentFragment}
+ */
 builder.parse = cb => cb(parser, ...Array(PARSER_TOKEN_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse token ${i}`)))
 
 export default builder
