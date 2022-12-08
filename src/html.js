@@ -530,9 +530,11 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 /**
  * @private
  */
-function parserVisitor(element, args, symbolValues, parserTokenTag) {
+function parserVisitor(element, args, symbolValues, argTagName) {
+	// return immediately if element is not an HTMLElement (not supposed to happen)
 	if (element.children) {
-		if (element.tagName === parserTokenTag.toUpperCase()) {
+		// if the element is an argument tag
+		if (element.tagName === argTagName.toUpperCase()) {
 			const input = args[+element.textContent]
 			if (typeof input === "symbol") {
 				element.outerHTML = symbolValues.get(input)
@@ -543,23 +545,34 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 			}
 		}
 
+		// if the element has attributes, find argument tag in there
 		if (element.attributes.length) {
 			const attributes = [...element.attributes]
+			// element who'll be used to parse the attribute value like some html
+			// allows us to navigate it using DOM api
 			const doc = document.createElement("div")
+
 			attributes.forEach(attrib => {
+				// actual moment when the attribute value is parsed
+				doc.innerHTML = attrib.value
+
+				// start with special attributes
 				if (attrib.name === PARSER_TOKEN_HTML_LOOP) {
+					// loop
 					const validateIndexArg = arg => typeof arg === "symbol" && symbolValues.has(arg)
 					const validateValueArg = arg => typeof arg === "symbol" && symbolValues.has(arg)
 					const validateIterableArg = arg => Array.isArray(arg) || arg instanceof Map || arg instanceof Set || typeof arg === "object"
-					doc.innerHTML = attrib.value
+
 					const nodes = doc.childNodes
 					const parameters = {
 						index: null,
 						value: null,
 						iterable: []
 					}
+					// TODO: that if/else if/else is horrendous, find a way to make it cleaner
+					// 	there are so many repetitions in there, there must be a way
 					if (nodes.length === 2 &&
-						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === argTagName.toUpperCase() &&
 						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent.startsWith(";")
 					) {
 						const valueArg = args[+nodes[0].textContent]
@@ -571,9 +584,9 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 						parameters.value = valueArg
 						parameters.iterable = iterableArg
 					} else if (nodes.length === 3 &&
-						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === argTagName.toUpperCase() &&
 						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === ";" &&
-						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase()
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === argTagName.toUpperCase()
 					) {
 						const valueArg = args[+nodes[0].textContent]
 						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_HTML_LOOP} value argument must be a parser symbol` }
@@ -584,9 +597,9 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 						parameters.value = valueArg
 						parameters.iterable = iterableArg
 					} else if (nodes.length === 4 &&
-						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === argTagName.toUpperCase() &&
 						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === "," &&
-						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase() &&
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === argTagName.toUpperCase() &&
 						nodes[3].nodeType === Node.TEXT_NODE && nodes[3].textContent.startsWith(";")
 					) {
 						const indexArg = args[+nodes[0].textContent]
@@ -602,11 +615,11 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 						parameters.value = valueArg
 						parameters.iterable = iterableArg
 					} else if (nodes.length === 5 &&
-						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === parserTokenTag.toUpperCase() &&
+						nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === argTagName.toUpperCase() &&
 						nodes[1].nodeType === Node.TEXT_NODE && nodes[1].textContent === "," &&
-						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === parserTokenTag.toUpperCase() &&
+						nodes[2].nodeType === Node.ELEMENT_NODE && nodes[2].tagName === argTagName.toUpperCase() &&
 						nodes[3].nodeType === Node.TEXT_NODE && nodes[3].textContent === ";" &&
-						nodes[4].nodeType === Node.ELEMENT_NODE && nodes[4].tagName === parserTokenTag.toUpperCase()
+						nodes[4].nodeType === Node.ELEMENT_NODE && nodes[4].tagName === argTagName.toUpperCase()
 					) {
 						const indexArg = args[+nodes[0].textContent]
 						if (! validateIndexArg(indexArg)) { throw `${PARSER_TOKEN_HTML_LOOP} index argument must be a parser symbol` }
@@ -624,19 +637,27 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 						throw `${PARSER_TOKEN_HTML_LOOP} parameters are not valid`
 					}
 
+					// clone the current node in order to repeat it
 					const template = element.cloneNode(true)
+					// remove the loop attribute, we don't want infinite recursion
 					template.removeAttribute(PARSER_TOKEN_HTML_LOOP)
+
+					// callback for each key,value pair
 					const loopCb = (index, value) => {
+						// set the symbol to value map
 						if (parameters.index) {
 							symbolValues.set(parameters.index, index)
 						}
 						symbolValues.set(parameters.value, value)
 
+						// clone the template
 						const newElement = template.cloneNode(true)
+						// insert it and visit like a normal node
 						element.insertAdjacentElement('beforebegin', newElement)
-						parserVisitor(newElement, args, symbolValues, parserTokenTag)
+						parserVisitor(newElement, args, symbolValues, argTagName)
 					}
 
+					// different way to iterate depending on the iterable
 					if (parameters.iterable instanceof Map || parameters.iterable instanceof Set) {
 						parameters.iterable.forEach((value, key) => loopCb(key, value))
 					} else if (Array.isArray(parameters.iterable)) {
@@ -645,17 +666,20 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
 						const entries = Object.entries(parameters.iterable)
 						for (const entry of entries) { loopCb(...entry) }
 					}
+
+					// remove original element
 					element.remove()
 
-				} else if (attrib.value.includes(parserTokenTag)) {
-					doc.innerHTML = attrib.value
-					parserVisitor(doc, args, symbolValues, parserTokenTag)
+				} else if (attrib.value.includes(argTagName)) {
+					// any classic attribute
+					parserVisitor(doc, args, symbolValues, argTagName)
 					attrib.value = doc.innerHTML
 				}
 			})
 		}
 
-		;[...element.children].forEach(child => parserVisitor(child, args, symbolValues, parserTokenTag))
+		// recursive call on each child
+		;[...element.children].forEach(child => parserVisitor(child, args, symbolValues, argTagName))
 	}
 }
 
@@ -663,21 +687,18 @@ function parserVisitor(element, args, symbolValues, parserTokenTag) {
  * @private
  */
 function parser(stringParts, ...args) {
-	// find a non-used tag
-	let tokenTag = "htmlbuilder-token"
-	let doc = document.createElement("div")
-	doc.innerHTML = stringParts.join("")
-	while (doc.querySelector(tokenTag) !== null) { tokenTag += "z" }
+	const argTagName = "htmlbuilder-parserarg"
+	const doc = document.createElement("div")
 
-	// use that tag as a placeholder for args
+	// rebuild template string and replace args with <token>${argsIndex}</token>
 	let index = 0
 	let partialString = ""
-	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${tokenTag}>${index}</${tokenTag}>` : ""); index++ }
+	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${argTagName}>${index}</${argTagName}>` : ""); index++ }
 	doc.innerHTML = partialString
 
 	// visit doc recursively and look for things to replace and stuff
 	const symbolValues = new Map(args.filter(arg => typeof arg === "symbol").map(symbol => ([symbol, null])))
-	;[...doc.children].forEach(node => parserVisitor(node, args, symbolValues, tokenTag))
+	;[...doc.children].forEach(node => parserVisitor(node, args, symbolValues, argTagName))
 
 	// put things in a fragment for a clean result when the result has multiple root tags
 	const fragment = document.createDocumentFragment()

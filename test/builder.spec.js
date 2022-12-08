@@ -122,18 +122,29 @@ describe("builder", function () {
 
 	it("parse", function () {
 		const arr = ["a", "b", "c"]
+		// add these text node because parse does keep them in the html
 		const expected = h("div")
 			.append(
 				h("div")
 					.append(
+						"\n\t",
 						h("h2").text("array"),
+						"\n\t",
 						h.repeat(3, "div", (div, i) => {
-							div.text(`${i} -> ${arr[i]}`)
-						})
+							div.text(`\n\t\t${i} -> ${arr[i]}\n\t`)
+						}),
+						"\n"
 					)
 			)
 
-		const doc = h.parse((parser, o, x, i) => parser`<div><h2>array</h2><div html-loop='${i},${x};${arr}'>${i} -> ${x}</div></div>`)
+		const doc = h.parse((parser, o, x, i) => parser`
+<div>
+	<h2>${"array"}</h2>
+	<div html-loop='${i},${x};${arr}'>
+		${i} -> ${x}
+	</div>
+</div>
+`)
 
 		const div = document.createElement("div")
 		div.append(doc)
