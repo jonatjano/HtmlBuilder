@@ -361,7 +361,7 @@ class DOMBuilderElement {
 	 * @return {this}
 	 */
 	empty() {
-		while (this._node.childNodes.length) { this._node.firstChild.remove(); }
+		while (this._node.childNodes.length) { this._node.firstChild.remove() }
 		return this
 	}
 
@@ -398,7 +398,7 @@ class DOMBuilderElement {
  * wrap a DOM element in order to make it less verbose to use
  *
  * @memberOf builder
- * @param {string | Node | DOMBuilderElement} tag if string, the tagname of a newly created element, else the element to wrap
+ * @param {string | Node | DOMBuilderElement} tag if string, the tag name of a newly created element, else the element to wrap
  * @param {builder~BuilderArgs} [args] some args for the creation of new tags
  * @returns {DOMBuilderElement}
  */
@@ -421,12 +421,15 @@ builder.namespace = {
 	svg: "http://www.w3.org/2000/svg",
 	mathML : "http://www.w3.org/1998/Math/MathML"
 }
-builder.namespace = {...builder.namespace, ...{
+builder.namespace = {
+	...builder.namespace,
+	...{
 		default: builder.namespace.html,
 		HTML: builder.namespace.html,
 		SVG: builder.namespace.svg,
 		MATH_ML: builder.namespace.mathML
-	}}
+	}
+}
 builder.ns = builder.namespace
 Object.freeze(builder.namespace)
 
@@ -494,7 +497,7 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 	if (typeof count === "function") {
 		repeatCallback = count
 		let i = 0
-		let finalArray = []
+		const finalArray = []
 		let ret = repeatCallback(i++)
 		while (ret !== undefined) {
 			finalArray.push(ret)
@@ -523,7 +526,7 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 	}
 	if (repeatCallback && typeof repeatCallback === "function") {
 		if (tag !== undefined) {
-			let newArray = array.map(repeatCallback)
+			const newArray = array.map(repeatCallback)
 			if (! newArray.every(e => e === undefined)) {
 				array = newArray
 			}
@@ -555,6 +558,7 @@ const PARSER_SYMBOL_COUNT = 10
  */
 const PARSER_SYMBOL_VALUE_MAP = new Map()
 const PARSER_TOKEN_LOOP = "loop"
+const PARSER_TOKEN_PARSER_ARG = "parser-arg"
 const PARSER_TOKEN_SET = "set"
 const PARSER_TOKEN_USE = "use"
 
@@ -574,7 +578,7 @@ function parserVisitor(element, args) {
 				element.innerHTML = "0"
 				parserVisitor(element, [input()])
 			} else if (input instanceof Node) {
-				element.insertAdjacentElement('beforebegin', input)
+				element.insertAdjacentElement("beforebegin", input)
 				element.remove()
 			} else if (typeof input === "object") {
 				element.outerHTML = JSON.stringify(input)
@@ -596,6 +600,7 @@ function parserVisitor(element, args) {
 				throw `${PARSER_TOKEN_SET} content must be in the form : \${symbol} = <expression>`
 			}
 
+			// TODO parse by hand to avoid eval like Function constructor
 			const functionParameters = []
 			const functionArguments = []
 			let functionBody = "return "
@@ -603,14 +608,14 @@ function parserVisitor(element, args) {
 			;[...element.childNodes].forEach((node, i) => {
 				if (i === 0) {return}
 				if (i === 1) {
-					let text = node.textContent
+					const text = node.textContent
 					functionBody += text.substring(text.indexOf("=") + 1)
 					return
 				}
 				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === builder.parse.argTagName.toUpperCase()) {
 					const input = args[+node.textContent]
-					functionBody += "htmlParserArgument" + node.textContent
-					functionParameters.push("htmlParserArgument" + node.textContent)
+					functionBody += `htmlParserArgument${node.textContent}`
+					functionParameters.push(`htmlParserArgument${node.textContent}`)
 					if (typeof input === "symbol") {
 						functionArguments.push(PARSER_SYMBOL_VALUE_MAP.get(input))
 					} else {
@@ -627,15 +632,16 @@ function parserVisitor(element, args) {
 			return
 		}
 		else if (element.tagName === builder.parse.useTagName.toUpperCase()) {
+			// TODO parse by hand to avoid eval like Function constructor
 			const functionParameters = []
 			const functionArguments = []
 			let functionBody = "return "
 
-			;[...element.childNodes].forEach((node, i) => {
+			;[...element.childNodes].forEach(node => {
 				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === builder.parse.argTagName.toUpperCase()) {
 					const input = args[+node.textContent]
-					functionBody += "htmlParserArgument" + node.textContent
-					functionParameters.push("htmlParserArgument" + node.textContent)
+					functionBody += `htmlParserArgument${node.textContent}`
+					functionParameters.push(`htmlParserArgument${node.textContent}`)
 					if (typeof input === "symbol") {
 						functionArguments.push(PARSER_SYMBOL_VALUE_MAP.get(input))
 					} else {
@@ -649,7 +655,7 @@ function parserVisitor(element, args) {
 			const func = new Function(...functionParameters, functionBody)
 			const newElement = document.createElement(builder.parse.argTagName)
 			newElement.textContent = "0"
-			element.insertAdjacentElement('beforebegin', newElement)
+			element.insertAdjacentElement("beforebegin", newElement)
 			element.remove()
 			parserVisitor(newElement, [func(...functionArguments)])
 			return
@@ -737,7 +743,7 @@ function parserVisitor(element, args) {
 						// clone the template
 						const newElement = template.cloneNode(true)
 						// insert it and visit like a normal node
-						element.insertAdjacentElement('beforebegin', newElement)
+						element.insertAdjacentElement("beforebegin", newElement)
 						parserVisitor(newElement, args)
 					}
 
@@ -764,7 +770,7 @@ function parserVisitor(element, args) {
 		}
 
 		// recursive call on each child
-		;[...element.children].forEach(child => parserVisitor(child, args))
+		[...element.children].forEach(child => parserVisitor(child, args))
 	}
 }
 
@@ -826,9 +832,9 @@ builder.parse.setSymbolValue = (symbol, value) => {
 }
 builder.parse.ATTRIBUTE_PREFIX = "data-hp-"
 builder.parse.TAG_PREFIX = "hp-"
-Object.defineProperty(builder.parse, 'argTagName', { get: () => builder.parse.TAG_PREFIX + "parser-arg" })
-Object.defineProperty(builder.parse, 'setTagName', { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_SET })
-Object.defineProperty(builder.parse, 'useTagName', { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_USE })
+Object.defineProperty(builder.parse, "argTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
+Object.defineProperty(builder.parse, "setTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_SET })
+Object.defineProperty(builder.parse, "useTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_USE })
 
 
 export default builder
