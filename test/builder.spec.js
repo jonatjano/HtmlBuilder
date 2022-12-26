@@ -13,12 +13,19 @@ describe("builder", function () {
 		expect(h.ns).to.be.frozen
 	})
 
-	it("accept a Node", function () {
+	it("accepts a DOMBuilderElement", function () {
+		const el = h("div")
+
+		expect(h(el)).to.equals(el)
+		expect(h(h(h(h(h(el)))))).to.equals(el)
+	})
+
+	it("accepts a Node", function () {
 		const wrap = h(el)
 
 		expect(wrap.node).to.be.equal(el)
 	})
-	it("accept a string", function () {
+	it("accepts a string", function () {
 		const wrap = h("div")
 
 		expect(wrap.node).to.be.an.instanceof(Node)

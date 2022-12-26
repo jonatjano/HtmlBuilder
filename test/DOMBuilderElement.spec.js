@@ -1,7 +1,7 @@
 import h from "../src/html.js"
 
 import jsdom_global from 'jsdom-global'
-jsdom_global()
+jsdom_global("", { url: "http://localhost" })
 import {expect} from 'chai'
 
 describe("DOMBuilderElement", function () {
@@ -103,6 +103,16 @@ describe("DOMBuilderElement", function () {
 				})
 			})
 		})
+		describe("special handling of Node without classList", function() {
+			const node = h.text()
+			expect(node.node.classList).to.be.undefined
+			it ("get returns undefined", function () {
+				expect(node.class()).to.be.undefined
+			})
+			it ("set return this", function () {
+				expect(node.class("test")).to.equal(node)
+			})
+		})
 	})
 
 	describe("append", function () {
@@ -140,6 +150,14 @@ describe("DOMBuilderElement", function () {
 		})
 	})
 
+	describe("appendRepeat", function () {
+		it("equals append(html.repeat(...))", function () {
+			let expected = h("div").append(h.repeat(8, "div", (el, i) => el.text(`div n°${i}`))).html()
+			let result = h("div").appendRepeat(8, "div", (el, i) => el.text(`div n°${i}`)).html()
+			expect(result).to.be.equal(expected)
+		})
+	})
+
 	describe("id", function () {
 		it("set", function () {
 			h(el).id("test")
@@ -150,6 +168,14 @@ describe("DOMBuilderElement", function () {
 			el.id = "test"
 
 			expect(h(el).id()).to.be.equal("test")
+		})
+		it("set throw if value doesn't have a toString", function () {
+			expect(() => h(el).id(Object.create(null))).to.throw(TypeError, "value must have a toString() method")
+		})
+		it("gracefully downgrade if node can't have an id", function () {
+			const node = h.text()
+			expect(node.id("test")).to.equal(node)
+			expect(node.id()).to.equal("")
 		})
 	})
 
@@ -167,6 +193,9 @@ describe("DOMBuilderElement", function () {
 			expect(h(el).text()).to.be.equal("<div></div>test")
 			expect(el.outerHTML).to.be.equal("<div>&lt;div&gt;&lt;/div&gt;test</div>")
 		})
+		it("set throw if value doesn't have a toString", function () {
+			expect(() => h(el).text(Object.create(null))).to.throw(TypeError, "value must have a toString() method")
+		})
 	})
 
 	describe("html", function () {
@@ -180,6 +209,20 @@ describe("DOMBuilderElement", function () {
 			el.innerHTML = "<div></div>test"
 
 			expect(h(el).html()).to.be.equal("<div></div>test")
+		})
+		it("set throw if value doesn't have a toString", function () {
+			expect(() => h(el).html(Object.create(null))).to.throw(TypeError, "value must have a toString() method")
+		})
+		it("calls text() if node doesn't have an innerHTML", function() {
+			const el = h.text("a")
+			let ret = null
+			ret = el.text("test")
+
+			expect("innerHTML" in el.node).to.be.false
+			expect(ret).to.be.equal(el)
+
+			expect(el.html()).to.be.equal(el.text())
+			expect(el.html()).to.be.equal("test")
 		})
 	})
 
@@ -232,6 +275,11 @@ describe("DOMBuilderElement", function () {
 
 			expect(el.getAttribute("title")).to.be.null
 			expect(el.getAttribute("color")).to.be.null
+		})
+		it("gracefully downgrade for nodes without attributes", function() {
+			const node = h.text("")
+			expect(node.attr("attrName", "attrValue")).to.be.equal(node)
+			expect(node.attr("attrName")).to.equals(null)
 		})
 	})
 })

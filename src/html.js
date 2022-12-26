@@ -27,7 +27,7 @@ class DOMBuilderElement {
 
 	/**
 	 * get node classes (if node can have class)
-	 * if node can't have classes (TextNode or CommentNode), returns undefined
+	 * if node can't have classes (ex: TextNode), returns undefined
 	 * @returns {?DOMTokenList}
 	 *//**
 	 * set node classes (if node can have class)
@@ -37,17 +37,17 @@ class DOMBuilderElement {
 	 *
 	 * array parameters can be nested and can contain object following the object parameter format
 	 *
-	 * if node can't have classes (TextNode or CommentNode), does nothing and returns this
+	 * if node can't have classes (ex: TextNode), does nothing and returns this
 	 * @param {string | string[] | Object<string, boolean>} args
 	 * @returns {this}
 	 */
 	class(...args) {
 		if (args.length === 0) {
-			if (! this._node.classList) {return undefined}
+			if (! ("classList" in this._node)) {return undefined}
 			return this._node.classList
 		}
 
-		if (! this._node.classList) {return this}
+		if (! ("classList" in this._node)) {return this}
 		args.flat(FLAT_DEPTH).forEach(classDesc => {
 			if (typeof classDesc === "string" || classDesc instanceof String) {
 				this._node.classList.add(classDesc)
@@ -106,18 +106,23 @@ class DOMBuilderElement {
 	/**
 	 * get the id of the node
 	 *
+	 * if node can't have an id, returns ""
 	 * @returns {string} the current id
 	 *//**
 	 * set the id of the node
 	 *
+	 * if node can't have an id, do nothing and returns this
 	 * @throws {TypeError} when value doesn't have a toString() function
 	 * @param {string | Object} value
 	 * @returns {this}
 	 */
 	id(value) {
+		if (! ("id" in this._node)) {
+			return value !== undefined ? this : ""
+		}
 		if(value !== undefined) {
 			if (typeof value.toString !== "function") {
-				throw new TypeError("value must be have a toString()")
+				throw new TypeError("value must have a toString() method")
 			}
 			this._node.id = value.toString()
 			return this
@@ -139,7 +144,7 @@ class DOMBuilderElement {
 	text(value) {
 		if(value !== undefined) {
 			if (typeof value.toString !== "function") {
-				throw new TypeError("value must be have a toString()")
+				throw new TypeError("value must have a toString() method")
 			}
 			this._node.textContent = value.toString()
 			return this
@@ -156,31 +161,30 @@ class DOMBuilderElement {
 	 *//**
 	 * set the innerHTML of the node
 	 *
-	 * if the node doesn't have a innerHTML, calls text()
+	 * if the node doesn't have a innerHTML, calls text(value)
 	 *
 	 * @throws {TypeError} when value doesn't have a toString() function
 	 * @param {string | Object} value
 	 * @returns {this}
 	 */
 	html(value) {
+		if (value !== undefined && typeof value.toString !== "function") {
+			throw new TypeError("value must have a toString() method")
+		}
+		if (! ("innerHTML" in this._node)) {
+			return this.text(value)
+		}
 		if(value !== undefined) {
-			if (typeof value.toString !== "function") {
-				throw new TypeError("value must be a string")
-			}
-			if (typeof this._node.innerHTML === "string") {
-				this._node.innerHTML = value.toString()
-			} else {
-				this.text(value.toString())
-			}
+			this._node.innerHTML = value.toString()
 			return this
 		}
-		return this._node.innerHTML ?? this.text()
+		return this._node.innerHTML
 	}
 
 	/**
 	 * get node attribute by name
 	 *
-	 * if node can't have attributes (TextNode or CommentNode), returns undefined
+	 * if node can't have attributes (ex: TextNode), returns null
 	 *
 	 * @param {string} name
 	 * @returns {string} the attribute value
@@ -193,16 +197,20 @@ class DOMBuilderElement {
 	 *
 	 * args can be an array of objects, following the same rules of when args is an object
 	 *
-	 * if node can't have attributes (TextNode or CommentNode), does nothing and returns this
-	 * @param { Array<Object.<string, string>> | Object.<string, string> | string } args
+	 * if node can't have attributes (ex: TextNode), does nothing and returns this
+	 * @param { Array<Object.<string, string | null | undefined>> | Object.<string, string | null | undefined> | string } args
 	 * @returns {this}
 	 */
 	attr(...args) {
 		if (args.length === 1 && (typeof args[0] === "string" || args[0] instanceof String)) {
-			return this._node.getAttribute?.(args[0])
+			if ("getAttribute" in this._node) {
+				return this._node.getAttribute(args[0])
+			} else {
+				return null
+			}
 		}
 
-		if (! this._node.setAttribute) {return undefined}
+		if (! ("setAttribute" in this._node)) {return this}
 		if (args.length === 2 &&
 			typeof args[0] === "string" || args[0] instanceof String &&
 			typeof args[1] === "string" || args[1] instanceof String
@@ -808,7 +816,7 @@ function parser(stringParts, ...args) {
  * @return {DocumentFragment}
  */
 builder.parse = cb => {
-	const tmpSymbols = Array(PARSER_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse token ${i}`))
+	const tmpSymbols = Array(PARSER_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse symbol ${i}`))
 	const ret = cb(parser, ...tmpSymbols)
 	tmpSymbols.forEach(symbol => { PARSER_SYMBOL_VALUE_MAP.delete(symbol) })
 	return ret

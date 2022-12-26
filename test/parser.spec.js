@@ -6,7 +6,7 @@ describe("parser", function () {
     it("work", function () {
         const expected = h("div").append(h("div").append(h("div")))
 
-        const doc = h.parse((parser, o, x, i) => parser`<div><div></div></div>`)
+        const doc = h.parse(parser => parser`<div><div></div></div>`)
 
         const div = document.createElement("div")
         div.append(doc)
@@ -17,9 +17,9 @@ describe("parser", function () {
 
         const withBasePrefix = h("div").append(h.parse((parser, o, x, i) => parser`<div data-hp-loop='["a"];${x}'>${i} -> ${x}</div>`)).html()
 
-        builder.parse.ATTRIBUTE_PREFIX = "my-prefix-"
+        builder.parse.ATTRIBUTE_PREFIX = "data-my-prefix-"
         expect(withBasePrefix).to.equal(
-            h("div").append(h.parse((parser, o, x, i) => parser`<div my-prefix-loop='["a"];${x}'>${i} -> ${x}</div>`)).html()
+            h("div").append(h.parse((parser, o, x, i) => parser`<div data-my-prefix-loop='["a"];${x}'>${i} -> ${x}</div>`)).html()
         )
 
         builder.parse.ATTRIBUTE_PREFIX = basePrefix
