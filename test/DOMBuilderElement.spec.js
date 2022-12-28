@@ -1,8 +1,8 @@
 import h from "../src/html.js"
 
-import jsdomGlobal from 'jsdom-global'
+import jsdomGlobal from "jsdom-global"
 jsdomGlobal("", { url: "http://localhost" })
-import {expect} from 'chai'
+import {expect} from "chai"
 
 describe("DOMBuilderElement", function () {
 	let el = document.createElement("div")
@@ -152,8 +152,8 @@ describe("DOMBuilderElement", function () {
 
 	describe("appendRepeat", function () {
 		it("equals append(html.repeat(...))", function () {
-			let expected = h("div").append(h.repeat(8, "div", (el, i) => el.text(`div n°${i}`))).html()
-			let result = h("div").appendRepeat(8, "div", (el, i) => el.text(`div n°${i}`)).html()
+			const expected = h("div").append(h.repeat(8, "div", (el, i) => el.text(`div n°${i}`))).html()
+			const result = h("div").appendRepeat(8, "div", (el, i) => el.text(`div n°${i}`)).html()
 			expect(result).to.be.equal(expected)
 		})
 	})

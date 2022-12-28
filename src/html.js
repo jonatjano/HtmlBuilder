@@ -388,10 +388,10 @@ class DOMBuilderElement {
 
 /**
  * @typedef builder~BuilderArgs
- * @property {string} namespace
- * @property {string} ns
- * @property {ElementCreationOptions} elementCreationOptions
- * @property {ElementCreationOptions} options
+ * @property {string} [namespace]
+ * @property {string} [ns]
+ * @property {ElementCreationOptions} [elementCreationOptions]
+ * @property {ElementCreationOptions} [options]
  */
 
 /**

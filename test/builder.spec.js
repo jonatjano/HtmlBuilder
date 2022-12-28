@@ -1,5 +1,5 @@
 import h from "../src/html.js"
-import {expect} from 'chai'
+import {expect} from "chai"
 
 describe("builder", function () {
 	const el = document.createElement("div")
@@ -113,7 +113,7 @@ describe("builder", function () {
 	})
 
 	describe("elementCreationOptions works", function () {
-		const expected = document.createElement('ul', { is : 'expanding-list' })
+		const expected = document.createElement("ul", { is : "expanding-list" })
 
 		it("with elementCreationOptions", function () {
 			const actual = h("ul", {elementCreationOptions: {is: "expanding-list"}}).node

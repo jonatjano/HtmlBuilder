@@ -12,7 +12,7 @@
     "coverage": "c8 -r html mocha",
     "doc": "npx jsdoc -d doc src/html.js",
     "everything": "npm run coverage && npm run doc",
-    "lint": "npx eslint src/html.js"
+    "lint": "npx eslint src/**.js test/**.js"
   },
   "repository": {
     "type": "git",
