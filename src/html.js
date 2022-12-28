@@ -278,7 +278,7 @@ class DOMBuilderElement {
 	 * @return {DOMBuilderElement|null} null if node doesn't have querySelector method
 	 */
 	querySelector(query, nakedNode = false) {
-		if (this._node.querySelector) {
+		if ("querySelector" in this._node) {
 			const node = this._node.querySelector(query)
 			return nakedNode ? node : new DOMBuilderElement(node)
 		}
@@ -289,19 +289,19 @@ class DOMBuilderElement {
 	 * easy access to node.querySelectorAll
 	 * @param {string} query
 	 * @param {true} nakedNodes
-	 * @return {NodeList|null} null if node doesn't have querySelectorAll method
+	 * @return {Node[]} empty array if node doesn't have querySelectorAll method
 	 *//**
 	 * easy access to node.querySelectorAll
 	 * @param {string} query
 	 * @param {false} [nakedNodes = false]
-	 * @return {DOMBuilderElement[]|null} null if node doesn't have querySelectorAll method
+	 * @return {DOMBuilderElement[]} empty array if node doesn't have querySelectorAll method
 	 */
 	querySelectorAll(query, nakedNodes = false) {
-		if (this._node.querySelectorAll) {
+		if ("querySelectorAll" in this._node) {
 			const nodes = this._node.querySelectorAll(query)
-			return nakedNodes ? nodes : [...nodes].map(node => new DOMBuilderElement(node))
+			return nakedNodes ? [...nodes] : [...nodes].map(node => new DOMBuilderElement(node))
 		}
-		return null
+		return []
 	}
 
 
@@ -395,7 +395,7 @@ class DOMBuilderElement {
  */
 
 /**
- * wrap a DOM element in order to make it less verbose to use
+ * wrap a DOM element with a fluent interface
  *
  * @memberOf builder
  * @param {string | Node | DOMBuilderElement} tag if string, the tag name of a newly created element, else the element to wrap

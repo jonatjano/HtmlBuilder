@@ -5,8 +5,8 @@ import {expect} from "chai"
  * this file contains some more complex test which could be real life usage
  */
 
-describe("big tests", function () {
-	it(`<div class="...">...<span class="... ...">...</span>...<a href="..."><b>...</b></a>...<img title="..." src="..."></div>`, function () {
+describe("big tests", () => {
+	it(`<div class="...">...<span class="... ...">...</span>...<a href="..."><b>...</b></a>...<img title="..." src="..."></div>`, () => {
 		const el = h("div")
 			.class("test")
 			.append(
