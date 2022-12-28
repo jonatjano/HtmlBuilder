@@ -1,7 +1,7 @@
 import h from "../src/html.js"
 
-import jsdom_global from 'jsdom-global'
-jsdom_global("", { url: "http://localhost" })
+import jsdomGlobal from 'jsdom-global'
+jsdomGlobal("", { url: "http://localhost" })
 import {expect} from 'chai'
 
 describe("DOMBuilderElement", function () {

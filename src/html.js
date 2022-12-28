@@ -569,7 +569,7 @@ function parserVisitor(element, args) {
 	// return immediately if element is not an HTMLElement (not supposed to happen)
 	if (element.children) {
 		// if the element is an argument tag
-		if (element.tagName === builder.parse.argTagName.toUpperCase()) {
+		if (element.tagName === parser.argTagName.toUpperCase()) {
 			const input = args[+element.textContent]
 			if (typeof input === "symbol") {
 				element.innerHTML = "0"
@@ -587,10 +587,10 @@ function parserVisitor(element, args) {
 			}
 			return
 		}
-		else if (element.tagName === builder.parse.setTagName.toUpperCase()) {
+		else if (element.tagName === parser.setTagName.toUpperCase()) {
 			if (element.childNodes.length < 2 ||
 				element.childNodes[0].nodeType !== Node.ELEMENT_NODE ||
-				element.childNodes[0].tagName !== builder.parse.argTagName.toUpperCase() ||
+				element.childNodes[0].tagName !== parser.argTagName.toUpperCase() ||
 				typeof args[+element.childNodes[0].textContent] !== "symbol" ||
 				! PARSER_SYMBOL_VALUE_MAP.has(args[+element.childNodes[0].textContent]) ||
 				element.childNodes[1].nodeType !== Node.TEXT_NODE ||
@@ -612,7 +612,7 @@ function parserVisitor(element, args) {
 					functionBody += text.substring(text.indexOf("=") + 1)
 					return
 				}
-				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === builder.parse.argTagName.toUpperCase()) {
+				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === parser.argTagName.toUpperCase()) {
 					const input = args[+node.textContent]
 					functionBody += `htmlParserArgument${node.textContent}`
 					functionParameters.push(`htmlParserArgument${node.textContent}`)
@@ -631,14 +631,14 @@ function parserVisitor(element, args) {
 			element.remove()
 			return
 		}
-		else if (element.tagName === builder.parse.useTagName.toUpperCase()) {
+		else if (element.tagName === parser.useTagName.toUpperCase()) {
 			// TODO parse by hand to avoid eval like Function constructor
 			const functionParameters = []
 			const functionArguments = []
 			let functionBody = "return "
 
 			;[...element.childNodes].forEach(node => {
-				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === builder.parse.argTagName.toUpperCase()) {
+				if (node.nodeType === Node.ELEMENT_NODE && node.tagName === parser.argTagName.toUpperCase()) {
 					const input = args[+node.textContent]
 					functionBody += `htmlParserArgument${node.textContent}`
 					functionParameters.push(`htmlParserArgument${node.textContent}`)
@@ -653,7 +653,7 @@ function parserVisitor(element, args) {
 			})
 
 			const func = new Function(...functionParameters, functionBody)
-			const newElement = document.createElement(builder.parse.argTagName)
+			const newElement = document.createElement(parser.argTagName)
 			newElement.textContent = "0"
 			element.insertAdjacentElement("beforebegin", newElement)
 			element.remove()
@@ -673,7 +673,7 @@ function parserVisitor(element, args) {
 				doc.innerHTML = attrib.value
 
 				// start with special attributes
-				if (attrib.name === builder.parse.ATTRIBUTE_PREFIX + PARSER_TOKEN_LOOP) {
+				if (attrib.name === parser.ATTRIBUTE_PREFIX + PARSER_TOKEN_LOOP) {
 					// loop (loop)="iterable;value,index"
 					const validateIndexArg = arg => typeof arg === "symbol" && PARSER_SYMBOL_VALUE_MAP.has(arg)
 					const validateValueArg = arg => typeof arg === "symbol" && PARSER_SYMBOL_VALUE_MAP.has(arg)
@@ -688,7 +688,7 @@ function parserVisitor(element, args) {
 
 					let i = 0
 					if (nodes[i] && nodes[i+1] &&
-						nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === builder.parse.argTagName.toUpperCase() &&
+						nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === parser.argTagName.toUpperCase() &&
 						nodes[i+1].nodeType === Node.TEXT_NODE && nodes[i+1].textContent === ";"
 					) {
 						const iterableArg = args[+nodes[i].textContent]
@@ -706,7 +706,7 @@ function parserVisitor(element, args) {
 						throw `${PARSER_TOKEN_LOOP} parameters are not valid`
 					}
 
-					if (nodes[i] && nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === builder.parse.argTagName.toUpperCase()) {
+					if (nodes[i] && nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === parser.argTagName.toUpperCase()) {
 						const valueArg = args[+nodes[i].textContent]
 						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_LOOP} value argument must be a symbol` }
 						parameters.value = valueArg
@@ -717,7 +717,7 @@ function parserVisitor(element, args) {
 
 					if (nodes[i] && nodes[i+1] &&
 						nodes[i].nodeType === Node.TEXT_NODE && nodes[i].textContent === "," &&
-						nodes[i+1].nodeType === Node.ELEMENT_NODE && nodes[i+1].tagName === builder.parse.argTagName.toUpperCase()
+						nodes[i+1].nodeType === Node.ELEMENT_NODE && nodes[i+1].tagName === parser.argTagName.toUpperCase()
 					) {
 						const indexArg = args[+nodes[i+1].textContent]
 						if (! validateIndexArg(indexArg)) { throw `${PARSER_TOKEN_LOOP} index argument must be a symbol` }
@@ -730,7 +730,7 @@ function parserVisitor(element, args) {
 					// clone the current node in order to repeat it
 					const template = element.cloneNode(true)
 					// remove the loop attribute, we don't want infinite recursion
-					template.removeAttribute(builder.parse.ATTRIBUTE_PREFIX + PARSER_TOKEN_LOOP)
+					template.removeAttribute(parser.ATTRIBUTE_PREFIX + PARSER_TOKEN_LOOP)
 
 					// callback for each key,value pair
 					const loopCb = (index, value) => {
@@ -761,7 +761,7 @@ function parserVisitor(element, args) {
 					element.remove()
 					return
 
-				} else if (attrib.value.includes(builder.parse.argTagName)) {
+				} else if (attrib.value.includes(parser.argTagName)) {
 					// any classic attribute
 					parserVisitor(doc, args)
 					attrib.value = doc.innerHTML
@@ -777,13 +777,13 @@ function parserVisitor(element, args) {
 /**
  * @private
  */
-function parser(stringParts, ...args) {
+function parserInternalCallback(stringParts, ...args) {
 	const doc = document.createElement("div")
 
 	// rebuild template string and replace args with <token>${argsIndex}</token>
 	let index = 0
 	let partialString = ""
-	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${builder.parse.argTagName}>${index}</${builder.parse.argTagName}>` : ""); index++ }
+	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${parser.argTagName}>${index}</${parser.argTagName}>` : ""); index++ }
 	doc.innerHTML = partialString
 
 	// visit doc recursively and look for things to replace and stuff
@@ -802,39 +802,37 @@ function parser(stringParts, ...args) {
 }
 
 /**
- * @callback builder~parser
+ * @callback parser~parser
  * @description must be used as a template literal tag
  * @param {string[]} stringParts
  * @param {...*} args
  * @return {DocumentFragment}
  */
 /**
- * @callback builder~parserCallback
- * @memberOf builder
- * @param {builder~parser} parser
+ * @callback parser~parserCallback
+ * @param {parser~parser} parser
  * @param {...Symbol} parserToken
  * @return {DocumentFragment}
  */
 /**
  * parse some html code into a DocumentFragment
- * @memberOf builder
- * @param {builder~parserCallback} cb
+ * @param {parser~parserCallback} cb
  * @return {DocumentFragment}
  */
-builder.parse = cb => {
+const parser = cb => {
 	const tmpSymbols = Array(PARSER_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse symbol ${i}`))
-	const ret = cb(parser, ...tmpSymbols)
+	const ret = cb(parserInternalCallback, ...tmpSymbols)
 	tmpSymbols.forEach(symbol => { PARSER_SYMBOL_VALUE_MAP.delete(symbol) })
 	return ret
 }
-builder.parse.setSymbolValue = (symbol, value) => {
+parser.setSymbolValue = (symbol, value) => {
 	PARSER_SYMBOL_VALUE_MAP.set(symbol, value)
 }
-builder.parse.ATTRIBUTE_PREFIX = "data-hp-"
-builder.parse.TAG_PREFIX = "hp-"
-Object.defineProperty(builder.parse, "argTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
-Object.defineProperty(builder.parse, "setTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_SET })
-Object.defineProperty(builder.parse, "useTagName", { get: () => builder.parse.TAG_PREFIX + PARSER_TOKEN_USE })
+parser.ATTRIBUTE_PREFIX = "data-hp-"
+parser.TAG_PREFIX = "hp-"
+Object.defineProperty(parser, "argTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
+Object.defineProperty(parser, "setTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_SET })
+Object.defineProperty(parser, "useTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_USE })
 
 
-export default builder
+export {builder as default, parser}
