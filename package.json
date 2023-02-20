@@ -11,7 +11,7 @@
 		"test": "mocha",
 		"coverage": "c8 mocha",
 		"coverage-html": "c8 -r html mocha",
-		"doc": "npx jsdoc -d doc src/builder.js",
+		"doc": "npx jsdoc -d doc src/*.js",
 		"everything": "npm run coverage && npm run doc",
 		"lint": "npx eslint src/**.js test/**.js"
 	},

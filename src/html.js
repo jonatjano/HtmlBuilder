@@ -563,6 +563,7 @@ const PARSER_TOKEN_SET = "set"
 const PARSER_TOKEN_USE = "use"
 
 /**
+ * TODO comment
  * @private
  */
 function parserVisitor(element, args) {
@@ -775,8 +776,8 @@ function parserVisitor(element, args) {
 }
 
 /**
- * @private
  * internal callback for the parser function
+ * @private
  * @param {string[]} stringParts
  * @param {any} args
  */
@@ -851,22 +852,22 @@ parser.ATTRIBUTE_PREFIX = "data-hp-"
  */
 parser.TAG_PREFIX = "hp-"
 /**
+ * the arg tag name taking into account the user own tag prefix, used to surround the variables in the parsed string
+ * is reserved for an internal usage
  * @private
  * @type {string}
- * the final arg tag name, used to surround the variables in the parsed string
- * is reserved for an internal usage
  */
 Object.defineProperty(parser, "argTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
 /**
+ * can be used by the user to change the value of a symbol during the parsing
  * @private
  * @type {string}
- * can be used by the user to change the value of a symbol during the parsing
  */
 Object.defineProperty(parser, "setTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_SET })
 /**
+ * can be used by the user to output the value of a symbol during the parsing
  * @private
  * @type {string}
- * can be used by the user to output the value of a symbol during the parsing
  */
 Object.defineProperty(parser, "useTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_USE })
 
@@ -880,20 +881,32 @@ Object.defineProperty(parser, "useTagName", { get: () => parser.TAG_PREFIX + PAR
  **********************************************************************************/
 
 /**
- * @private
- * @typedef {Map<string, {value: any, nodes: Set<Node>}>} binder~bindings
  * @description internal structure used to store binder recognized nodes and current value
+ * @typedef {Map<string, {value: any, nodes: Set<Node>}>} binder~bindings
+ * @private
+ */
+/**
+ * @callback binder~addNode
+ * @param {string} propertyName
+ * @param {DOMBuilderElement | Node} element
+ */
+/**
+ * @callback binder~onchange
+ * @param {string} propertyName
+ * @param {any} newValue
+ */
+/**
+ * @typedef {Object} binder~return
+ * @property {binder~addNode} addNode
+ * @property {binder~onchange} [onchange]
  */
 /**
  * get a binder object, it is used to make bindings between itself and html elements
  * any element with a value property (input, textarea, ...) gets two way bindings
  * other elements gets a one way binding, getting its text updated when the variable change
- * @return {
- * 	{
- * 		addNode: (string, (DOMBuilderElement | Node)) => void,
- * 		[onchange]: (string, any) => void
- * 	}
- * } the onchange method can be added by the final user to get notified when any property value is changed
+ *
+ * the onchange method can be added by the final user to get notified when any property value is changed
+ * @return {binder~return}
  */
 function binder() {
 	const object = Object.create(null)
@@ -934,9 +947,9 @@ function binder() {
 }
 
 /**
- * @protected
  * add an event listener to an element
  * this listener updates the binder property when the element fire the input event
+ * @protected
  * @param {HTMLElement} element the added element
  * @param {Object} proxyHandler the proxy handler
  * @param {string} propName the property name
@@ -950,8 +963,8 @@ binder.elementAddEventListener = (element, proxyHandler, propName) => {
 }
 
 /**
- * @private
  * create the connection between a binder and an element
+ * @private
  * @param {binder~bindings} bindings
  * @param {object} proxyHandler
  * @param {string} propName
@@ -973,8 +986,8 @@ binder.addNode = (bindings, proxyHandler, propName, element) => {
 }
 
 /**
- * @private
  * change the value of a html element
+ * @private
  * @param {HTMLElement} element
  * @param {any} value
  */
