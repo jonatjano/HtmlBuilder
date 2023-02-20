@@ -1,8 +1,11 @@
-import h from "../src/html.js"
-
+import {builder as h} from "../src/html.js"
 import jsdomGlobal from "jsdom-global"
 jsdomGlobal("", { url: "http://localhost" })
 import {expect} from "chai"
+
+/*
+ * DOMBuilderElement methods specific tests
+ */
 
 describe("DOMBuilderElement", () => {
 	let el

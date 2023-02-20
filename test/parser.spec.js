@@ -1,7 +1,10 @@
-import h, {parser} from "../src/html.js"
+import {builder as h, parser} from "../src/html.js"
 import {expect} from "chai"
 
 // mocha: true
+/*
+ * parser specific tests
+ */
 
 describe("parser", () => {
 	it("work", () => {

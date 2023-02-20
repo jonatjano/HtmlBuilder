@@ -1,4 +1,4 @@
-import h from "../src/html.js"
+import {builder as h} from "../src/html.js"
 import {expect} from "chai"
 
 /*

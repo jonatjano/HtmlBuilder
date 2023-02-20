@@ -1,5 +1,9 @@
-import h from "../src/html.js"
+import {builder as h} from "../src/html.js"
 import {expect} from "chai"
+
+/*
+ * builders function specific test
+ */
 
 describe("builder", () => {
 	const el = document.createElement("div")

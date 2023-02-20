@@ -270,12 +270,12 @@ class DOMBuilderElement {
 	 * easy access to node.querySelector
 	 * @param {string} query
 	 * @param {true} nakedNode
-	 * @return {Node|null} null if node doesn't have querySelector method
+	 * @return {Node | null} null if node doesn't have querySelector method
 	 *//**
 	 * easy access to node.querySelector
 	 * @param {string} query
 	 * @param {false} [nakedNode = false]
-	 * @return {DOMBuilderElement|null} null if node doesn't have querySelector method
+	 * @return {DOMBuilderElement | null} null if node doesn't have querySelector method
 	 */
 	querySelector(query, nakedNode = false) {
 		if ("querySelector" in this._node) {
@@ -398,7 +398,7 @@ class DOMBuilderElement {
  * wrap a DOM element with a fluent interface
  *
  * @memberOf builder
- * @param {string | Node | DOMBuilderElement} tag if string, the tag name of a newly created element, else the element to wrap
+ * @param {string | DOMBuilderElement | Node} tag if string, the tag name of a newly created element, else the element to wrap
  * @param {builder~BuilderArgs} [args] some args for the creation of new tags
  * @returns {DOMBuilderElement}
  */
@@ -776,6 +776,9 @@ function parserVisitor(element, args) {
 
 /**
  * @private
+ * internal callback for the parser function
+ * @param {string[]} stringParts
+ * @param {any} args
  */
 function parserInternalCallback(stringParts, ...args) {
 	const doc = document.createElement("div")
@@ -786,13 +789,14 @@ function parserInternalCallback(stringParts, ...args) {
 	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${parser.argTagName}>${index}</${parser.argTagName}>` : ""); index++ }
 	doc.innerHTML = partialString
 
-	// visit doc recursively and look for things to replace and stuff
+	// create a map of the symbols used in the code to parse
 	args.filter(arg => typeof arg === "symbol")
 		.forEach(symbol => {
 			if (! PARSER_SYMBOL_VALUE_MAP.has(symbol)) {
 				PARSER_SYMBOL_VALUE_MAP.set(symbol, null)
 			}
 		})
+	// visit doc recursively and look for things to replace
 	;[...doc.children].forEach(node => parserVisitor(node, args))
 
 	// put things in a fragment for a clean result when the result has multiple root tags
@@ -825,14 +829,161 @@ const parser = cb => {
 	tmpSymbols.forEach(symbol => { PARSER_SYMBOL_VALUE_MAP.delete(symbol) })
 	return ret
 }
+/**
+ * can be used to preset a symbol value before calling the parser
+ * @param {Symbol} symbol
+ * @param {any} value
+ */
 parser.setSymbolValue = (symbol, value) => {
 	PARSER_SYMBOL_VALUE_MAP.set(symbol, value)
 }
+/**
+ * the prefix used in parser specific attributes
+ * can be edited to change the attributes recognized by the parser
+ * the "data-" part is required to conform to the standard but can be edited away if you don't mind
+ * @type {string}
+ */
 parser.ATTRIBUTE_PREFIX = "data-hp-"
+/**
+ * the prefix used in parser specific tags
+ * can be edited to change the tags recognized by the parser
+ * @type {string}
+ */
 parser.TAG_PREFIX = "hp-"
+/**
+ * @private
+ * @type {string}
+ * the final arg tag name, used to surround the variables in the parsed string
+ * is reserved for an internal usage
+ */
 Object.defineProperty(parser, "argTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
+/**
+ * @private
+ * @type {string}
+ * can be used by the user to change the value of a symbol during the parsing
+ */
 Object.defineProperty(parser, "setTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_SET })
+/**
+ * @private
+ * @type {string}
+ * can be used by the user to output the value of a symbol during the parsing
+ */
 Object.defineProperty(parser, "useTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_USE })
 
 
-export {builder as default, parser}
+/***********************************************************************************
+ *
+ *
+ *                                START OF BINDER
+ *
+ *
+ **********************************************************************************/
+
+/**
+ * @private
+ * @typedef {Map<string, {value: any, nodes: Set<Node>}>} binder~bindings
+ * @description internal structure used to store binder recognized nodes and current value
+ */
+/**
+ * get a binder object, it is used to make bindings between itself and html elements
+ * any element with a value property (input, textarea, ...) gets two way bindings
+ * other elements gets a one way binding, getting its text updated when the variable change
+ * @return {
+ * 	{
+ * 		addNode: (string, (DOMBuilderElement | Node)) => void,
+ * 		[onchange]: (string, any) => void
+ * 	}
+ * } the onchange method can be added by the final user to get notified when any property value is changed
+ */
+function binder() {
+	const object = Object.create(null)
+	/**
+	 * @type {binder~bindings}
+	 */
+	const bindings = new Map()
+	const proxy = new Proxy(object, {
+		get(target, prop) {
+			if (bindings.has(prop)) { return bindings.get(prop).value }
+			if (prop === "addNode") { return binder.addNode.bind(null, bindings, this) }
+			if (prop === "onchange") { return this.onchange }
+			// TODO find how to remove event listener in order to uncomment next line
+			// if (prop === "removeElement") { return binder2.removeElement.bind(null, bindings, prop) }
+			return null
+		},
+		set(target, prop, value) {
+			if (bindings.has(prop)) {
+				const bind = bindings.get(prop)
+				bind.value = value
+				this.onchange?.(prop, value)
+				bind.nodes.forEach(el => binder.setElementValue(el, value))
+				return true
+			}
+			if (prop === "onchange") {
+				if (typeof value === "function") {
+					this.onchange = value
+					return true
+				} else {
+					throw new TypeError("binder.onchange must be a function")
+				}
+			}
+			return false
+		}
+	})
+	Object.preventExtensions(proxy)
+	return proxy
+}
+
+/**
+ * @protected
+ * add an event listener to an element
+ * this listener updates the binder property when the element fire the input event
+ * @param {HTMLElement} element the added element
+ * @param {Object} proxyHandler the proxy handler
+ * @param {string} propName the property name
+ */
+binder.elementAddEventListener = (element, proxyHandler, propName) => {
+	if ("value" in element) {
+		element.addEventListener("input", () => {
+			proxyHandler.set(proxyHandler, propName, element.value)
+		})
+	}
+}
+
+/**
+ * @private
+ * create the connection between a binder and an element
+ * @param {binder~bindings} bindings
+ * @param {object} proxyHandler
+ * @param {string} propName
+ * @param {DOMBuilderElement | Node} element
+ */
+binder.addNode = (bindings, proxyHandler, propName, element) => {
+	if (propName === "addNode") {
+		throw new SyntaxError(`Can't bind to the name addNode, the name is already in use by the binder`)
+	}
+	if (element instanceof DOMBuilderElement) {
+		element = element.node
+	}
+	if (! bindings.has(propName)) {
+		bindings.set(propName, {value: undefined, nodes: new Set()})
+	}
+	bindings.get(propName).nodes.add(element)
+	binder.elementAddEventListener(element, proxyHandler, propName)
+	console.log(bindings)
+}
+
+/**
+ * @private
+ * change the value of a html element
+ * @param {HTMLElement} element
+ * @param {any} value
+ */
+binder.setElementValue = (element, value) => {
+	if ("value" in element) {
+		element.value = value
+	} else {
+		element.textContent = value
+	}
+}
+
+export {builder, parser, binder}

@@ -1,36 +1,37 @@
 {
-  "name": "htmlbuilder",
-  "version": "0.0.1",
-  "description": "",
-  "main": "src/html.js",
-  "directories": {
-    "test": "test"
-  },
-  "type": "module",
-  "scripts": {
-    "test": "mocha",
-    "coverage": "c8 -r html mocha",
-    "doc": "npx jsdoc -d doc src/html.js",
-    "everything": "npm run coverage && npm run doc",
-    "lint": "npx eslint src/**.js test/**.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jonatjano/HtmlBuilder.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/jonatjano/HtmlBuilder/issues"
-  },
-  "homepage": "https://github.com/jonatjano/HtmlBuilder#README.md",
-  "devDependencies": {
-    "c8": "^7.12.0",
-    "chai": "^4.3.7",
-    "eslint": "^8.30.0",
-    "jsdoc": "^4.0.0",
-    "jsdom": "^20.0.3",
-    "jsdom-global": "^3.0.2",
-    "mocha": "^10.1.0"
-  }
+	"name": "htmlbuilder",
+	"version": "0.0.1",
+	"description": "",
+	"main": "src/builder.js",
+	"directories": {
+		"test": "test"
+	},
+	"type": "module",
+	"scripts": {
+		"test": "mocha",
+		"coverage": "c8 mocha",
+		"coverage-html": "c8 -r html mocha",
+		"doc": "npx jsdoc -d doc src/builder.js",
+		"everything": "npm run coverage && npm run doc",
+		"lint": "npx eslint src/**.js test/**.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jonatjano/HtmlBuilder.git"
+	},
+	"author": "",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/jonatjano/HtmlBuilder/issues"
+	},
+	"homepage": "https://github.com/jonatjano/HtmlBuilder#README.md",
+	"devDependencies": {
+		"c8": "^7.12.0",
+		"chai": "^4.3.7",
+		"eslint": "^8.30.0",
+		"jsdoc": "^4.0.0",
+		"jsdom": "^20.0.3",
+		"jsdom-global": "^3.0.2",
+		"mocha": "^10.1.0"
+	}
 }
