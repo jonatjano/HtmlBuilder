@@ -550,7 +550,7 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
  * number of temporary symbols sent by parse
  * @type {number}
  */
-const PARSER_SYMBOL_COUNT = 10
+const PARSER_TEMPORARY_SYMBOL_COUNT = 10
 /**
  * map keeping the values of symbols between parses
  * temporary parse symbols are forgotten after each parse
@@ -563,24 +563,43 @@ const PARSER_TOKEN_SET = "set"
 const PARSER_TOKEN_USE = "use"
 
 /**
- * TODO comment
+ * recursively visit the given element to find special nodes and attribute to replace using args values
+ * @param {HTMLElement} element the element parsed from the string given to the parser
+ * @param {any[]} args the values sent to the parser using the ${} syntax
+ * @param {HTMLElement} [attributeParentElement] used when recurring inside an attribute to give a link to the parent element
  * @private
  */
-function parserVisitor(element, args) {
+function parserVisitor(element, args, attributeParentElement) {
 	// return immediately if element is not an HTMLElement (not supposed to happen)
 	if (element.children) {
 		// if the element is an argument tag
 		if (element.tagName === parser.argTagName.toUpperCase()) {
+			// get the argument value from the args array
+			// and find the right way to use it
 			const input = args[+element.textContent]
+			// symbols are used as internal variable by the parser
 			if (typeof input === "symbol") {
 				element.innerHTML = "0"
 				parserVisitor(element, [PARSER_SYMBOL_VALUE_MAP.get(input)])
+			// binders bind to the attribute container or create a new text tag depending on the situation
+			} else if (typeof input === "object" && input !== null && input[binder.isBinder]) {
+				if (attributeParentElement) {
+					input.addNode("value", attributeParentElement)
+				} else {
+					const text = document.createTextNode("")
+					input.addNode("value", text)
+					element.replaceWith(text)
+				}
+			// if the argument is a function, call it and apply its result
 			} else if (typeof input === "function" && input.length === 0) {
 				element.innerHTML = "0"
 				parserVisitor(element, [input()])
+			// Nodes and DOMBuilderElements are inserted as is inside the DOM tree
 			} else if (input instanceof Node) {
-				element.insertAdjacentElement("beforebegin", input)
-				element.remove()
+				element.replaceWith(input)
+			} else if (input instanceof DOMBuilderElement) {
+				element.replaceWith(input.node)
+			// other values are replaced by their string representation
 			} else if (typeof input === "object") {
 				element.outerHTML = JSON.stringify(input)
 			} else {
@@ -588,6 +607,12 @@ function parserVisitor(element, args) {
 			}
 			return
 		}
+		// the element is a parser set
+		// sets the symbol value
+		// <hp-set>${symbol} = "value"</hp-set>
+		// <hp-set>${symbol} = ${"value"}</hp-set>
+		// <hp-set>${symbol} = ${otherSymbol}</hp-set>
+		// TODO create parser script and remove this
 		else if (element.tagName === parser.setTagName.toUpperCase()) {
 			if (element.childNodes.length < 2 ||
 				element.childNodes[0].nodeType !== Node.ELEMENT_NODE ||
@@ -632,6 +657,9 @@ function parserVisitor(element, args) {
 			element.remove()
 			return
 		}
+		// the element is a parser use
+		// <hp-use>${symbol}.property</hp-use>
+		// TODO create parser script and remove this
 		else if (element.tagName === parser.useTagName.toUpperCase()) {
 			// TODO parse by hand to avoid eval like Function constructor
 			const functionParameters = []
@@ -674,8 +702,16 @@ function parserVisitor(element, args) {
 				doc.innerHTML = attrib.value
 
 				// start with special attributes
+
+				/* data-hp-loop
+				 * duplicate the element for each iterable entry setting the symbols to the corresponding entry key and value
+				 * data-hp-loop="iterable;value,index"
+				 * - iterable can be an array, an object, a map, a set or a JSON string parseable to an array or an object
+				 * 	in the case of the JSON string, it can be written inline directly
+				 * - value must be a symbol
+				 * - index is optional, when present must be a symbol
+				 */
 				if (attrib.name === parser.ATTRIBUTE_PREFIX + PARSER_TOKEN_LOOP) {
-					// loop (loop)="iterable;value,index"
 					const validateIndexArg = arg => typeof arg === "symbol" && PARSER_SYMBOL_VALUE_MAP.has(arg)
 					const validateValueArg = arg => typeof arg === "symbol" && PARSER_SYMBOL_VALUE_MAP.has(arg)
 					const validateIterableArg = arg => Array.isArray(arg) || arg instanceof Map || arg instanceof Set || typeof arg === "object"
@@ -688,6 +724,7 @@ function parserVisitor(element, args) {
 					}
 
 					let i = 0
+					// if starts with `${value};` check that the value is a valid iterable
 					if (nodes[i] && nodes[i+1] &&
 						nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === parser.argTagName.toUpperCase() &&
 						nodes[i+1].nodeType === Node.TEXT_NODE && nodes[i+1].textContent === ";"
@@ -696,6 +733,7 @@ function parserVisitor(element, args) {
 						if (! validateIterableArg(iterableArg)) { throw `${PARSER_TOKEN_LOOP} iterable argument is not valid` }
 						parameters.iterable = iterableArg
 						i += 2
+					// if starts with `["some", "string"]` parse it as json and check that it's a valid iterable
 					} else if (nodes[i] &&
 						nodes[i].nodeType === Node.TEXT_NODE && nodes[i].textContent.length > 1 && nodes[i].textContent.endsWith(";")
 					) {
@@ -707,6 +745,7 @@ function parserVisitor(element, args) {
 						throw `${PARSER_TOKEN_LOOP} parameters are not valid`
 					}
 
+					// ensure that the next part is a `${symbol}` and use it for the value symbol
 					if (nodes[i] && nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === parser.argTagName.toUpperCase()) {
 						const valueArg = args[+nodes[i].textContent]
 						if (! validateValueArg(valueArg)) { throw `${PARSER_TOKEN_LOOP} value argument must be a symbol` }
@@ -716,6 +755,7 @@ function parserVisitor(element, args) {
 						throw `${PARSER_TOKEN_LOOP} parameters are not valid`
 					}
 
+					// if the end is `,${symbol}`, ensure that it can be used as the index symbol
 					if (nodes[i] && nodes[i+1] &&
 						nodes[i].nodeType === Node.TEXT_NODE && nodes[i].textContent === "," &&
 						nodes[i+1].nodeType === Node.ELEMENT_NODE && nodes[i+1].tagName === parser.argTagName.toUpperCase()
@@ -758,20 +798,21 @@ function parserVisitor(element, args) {
 						for (const entry of entries) { loopCb(...entry) }
 					}
 
-					// remove original element
+					// remove the original element
 					element.remove()
 					return
 
+				// any attribute without special recognition
 				} else if (attrib.value.includes(parser.argTagName)) {
-					// any classic attribute
-					parserVisitor(doc, args)
+					// recursive call on the attribute value
+					parserVisitor(doc, args, element)
 					attrib.value = doc.innerHTML
 				}
 			}
 		}
 
 		// recursive call on each child
-		[...element.children].forEach(child => parserVisitor(child, args))
+		[...element.children].forEach(child => parserVisitor(child, args, attributeParentElement))
 	}
 }
 
@@ -784,7 +825,7 @@ function parserVisitor(element, args) {
 function parserInternalCallback(stringParts, ...args) {
 	const doc = document.createElement("div")
 
-	// rebuild template string and replace args with <token>${argsIndex}</token>
+	// rebuild template string and replace args with <parser.argTagName>${argsIndex}</parser.argTagName>
 	let index = 0
 	let partialString = ""
 	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${parser.argTagName}>${index}</${parser.argTagName}>` : ""); index++ }
@@ -802,7 +843,7 @@ function parserInternalCallback(stringParts, ...args) {
 
 	// put things in a fragment for a clean result when the result has multiple root tags
 	const fragment = document.createDocumentFragment()
-	fragment.append(...doc.children)
+	fragment.append(...doc.childNodes)
 	return fragment
 }
 
@@ -825,7 +866,7 @@ function parserInternalCallback(stringParts, ...args) {
  * @return {DocumentFragment}
  */
 const parser = cb => {
-	const tmpSymbols = Array(PARSER_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse symbol ${i}`))
+	const tmpSymbols = Array(PARSER_TEMPORARY_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse symbol ${i}`))
 	const ret = cb(parserInternalCallback, ...tmpSymbols)
 	tmpSymbols.forEach(symbol => { PARSER_SYMBOL_VALUE_MAP.delete(symbol) })
 	return ret
@@ -857,19 +898,19 @@ parser.TAG_PREFIX = "hp-"
  * @private
  * @type {string}
  */
-Object.defineProperty(parser, "argTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
+Object.defineProperty(parser, "argTagName", { configurable: false, get: () => parser.TAG_PREFIX + PARSER_TOKEN_PARSER_ARG })
 /**
  * can be used by the user to change the value of a symbol during the parsing
  * @private
  * @type {string}
  */
-Object.defineProperty(parser, "setTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_SET })
+Object.defineProperty(parser, "setTagName", { configurable: false, get: () => parser.TAG_PREFIX + PARSER_TOKEN_SET })
 /**
  * can be used by the user to output the value of a symbol during the parsing
  * @private
  * @type {string}
  */
-Object.defineProperty(parser, "useTagName", { get: () => parser.TAG_PREFIX + PARSER_TOKEN_USE })
+Object.defineProperty(parser, "useTagName", { configurable: false, get: () => parser.TAG_PREFIX + PARSER_TOKEN_USE })
 
 
 /***********************************************************************************
@@ -919,7 +960,8 @@ function binder() {
 			if (bindings.has(prop)) { return bindings.get(prop).value }
 			if (prop === "addNode") { return binder.addNode.bind(null, bindings, this) }
 			if (prop === "onchange") { return this.onchange }
-			// TODO find how to remove event listener in order to uncomment next line
+			if (prop === binder.isBinder) { return true }
+			// TODO find how to store and remove event listener in order to uncomment next line
 			// if (prop === "removeElement") { return binder2.removeElement.bind(null, bindings, prop) }
 			return null
 		},
@@ -946,6 +988,8 @@ function binder() {
 	return proxy
 }
 
+binder.isBinder = Symbol("binder.isBinder")
+
 /**
  * add an event listener to an element
  * this listener updates the binder property when the element fire the input event
@@ -971,9 +1015,9 @@ binder.elementAddEventListener = (element, proxyHandler, propName) => {
  * @param {DOMBuilderElement | Node} element
  */
 binder.addNode = (bindings, proxyHandler, propName, element) => {
-	if (propName === "addNode") {
-		throw new SyntaxError(`Can't bind to the name addNode, the name is already in use by the binder`)
-	}
+	if (propName === "addNode") { throw new SyntaxError(`Can't bind to the name addNode, the name is already in use by the binder internals`) }
+	if (propName === "removeNode") { throw new SyntaxError(`Can't bind to the name removeNode, the name is reserved for future use by the binder internals`) }
+	if (propName === "onchange") { throw new SyntaxError(`Can't bind to the name onchange, the name is already in use by the binder internals`) }
 	if (element instanceof DOMBuilderElement) {
 		element = element.node
 	}
@@ -982,7 +1026,6 @@ binder.addNode = (bindings, proxyHandler, propName, element) => {
 	}
 	bindings.get(propName).nodes.add(element)
 	binder.elementAddEventListener(element, proxyHandler, propName)
-	console.log(bindings)
 }
 
 /**

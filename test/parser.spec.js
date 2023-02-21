@@ -16,6 +16,15 @@ describe("parser", () => {
 		div.append(doc)
 		expect(div.innerHTML).to.be.equal(expected.html())
 	})
+	it("parses plain text as a text node", () => {
+		const expected = h("div").append("text")
+
+		const doc = parser(parser => parser`text`)
+
+		const div = document.createElement("div")
+		div.append(doc)
+		expect(div.innerHTML).to.be.equal(expected.html())
+	})
 	it("can change special attribute prefix", () => {
 		const basePrefix = parser.ATTRIBUTE_PREFIX
 

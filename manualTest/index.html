@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script type="module">
+		import {builder, binder, parser} from "../src/html.js"
+
+
+        /** vanilla */
+		// const output = document.createTextNode("")
+		// const input = document.createElement("input")
+		// input.type = "text"
+		// document.body.append(document.createTextNode("input: "), input, document.createElement("br"), document.createTextNode("output: "), output);
+        //
+		// const bind = binder()
+		// bind.addNode("value", output)
+		// bind.addNode("value", input)
+		// bind.onchange = (prop, value) => console.log(prop, value)
+
+        /** builder */
+        // let output, input;
+		// builder(document.body)
+        //     .append(
+		// 		"input: ",
+		// 		(input = builder("input").attr("type", "text"), input),
+		// 		builder("br"),
+		// 		"output: ",
+		// 		(output = builder.text(""), output)
+        //     )
+        //
+        // const bind = binder()
+        // bind.addNode("value", output)
+		// bind.addNode("value", input)
+        // bind.onchange = (prop, value) => console.log(prop, value)
+
+        /** parser */
+		const bind = binder()
+		const input = builder("input").attr("type", "text")
+		bind.addNode("value", input)
+		document.body.append(
+			// input: <input type="text" data-hp-bind-value="${bind}"/><br/>
+			parser(cb => cb`
+			input: ${input}
+            input: <input type="text" value="${bind}"/><br/>
+			output: ${bind}
+			`)
+        )
+
+        // set the bind value to "test", should set the input and the text to "test"
+        bind.value = "test"
+
+        // for test purpose only, allow the user to change the bind value in the console
+        globalThis.bind = bind;
+    </script>
+</head>
+<body>
+</body>
+</html>
