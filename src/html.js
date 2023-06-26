@@ -472,11 +472,10 @@ builder.text = content => {
  * create new elements as long as buildCallback returns something different from undefined
  * @memberOf builder
  *
- * @param {builder~buildCallback} buildCallback function to call on each of the created elements
+ * @param {builder~buildCallback} buildCallback function to call to create elements, continue as long as it doesn't return undefined
  * @return {DOMBuilderElement[]}
  *//**
- * clone the inputted element the number of time asked, then call the forEachCallback for each newly created element
- * if tag and repeatCallback are both undefined, return an array of size count filled with nulls
+ * create an array of size count and call repeatCallback for each of it's elements
  * @memberOf builder
  *
  * @param {number} count the number of element to create
@@ -823,6 +822,7 @@ function parserVisitor(element, args, attributeParentElement) {
  * @private
  * @param {string[]} stringParts
  * @param {any} args
+ * @returns DocumentFragment
  */
 function parserInternalCallback(stringParts, ...args) {
 	const doc = document.createElement("div")
