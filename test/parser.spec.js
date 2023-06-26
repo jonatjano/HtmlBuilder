@@ -7,7 +7,7 @@ import {expect} from "chai"
  */
 
 describe("parser", () => {
-	it("work", () => {
+	it("works", () => {
 		const expected = h("div").append(h("div").append(h("div")))
 
 		const doc = parser(parser => parser`<div><div></div></div>`)
@@ -50,7 +50,7 @@ describe("parser", () => {
 				div.append(doc)
 				expect(div.innerHTML).to.be.equal(expected.html())
 			})
-			it("using var", () => {
+			it("using a variable", () => {
 				const doc = parser((parser, o, x, i) => parser`<div data-hp-loop='${arr};${x},${i}'>${i} -> ${x}</div>`)
 				const div = document.createElement("div")
 				div.append(doc)
@@ -66,7 +66,7 @@ describe("parser", () => {
 				div.append(doc)
 				expect(div.innerHTML).to.be.equal(expected.html())
 			})
-			it("using var", () => {
+			it("using a variable", () => {
 				const doc = parser((parser, o, x, i) => parser`<div data-hp-loop='${obj};${x},${i}'>${i} -> ${x}</div>`)
 				const div = document.createElement("div")
 				div.append(doc)
@@ -77,7 +77,7 @@ describe("parser", () => {
 			const map = new Map(Object.entries(obj))
 			// add these text node because parse does keep them in the html
 			const expected = h("div").append(h.repeat(3, "div", (div, i) => {div.text(`${[...map.keys()][i]} -> ${[...map.values()][i]}`)}))
-			it("using var", () => {
+			it("using a variable", () => {
 				const doc = parser((parser, o, x, i) => parser`<div data-hp-loop='${map};${x},${i}'>${i} -> ${x}</div>`)
 				const div = document.createElement("div")
 				div.append(doc)
@@ -145,8 +145,8 @@ describe("parser", () => {
 		})
 		it("works when index is omitted", () => {
 			const a = ["a"]
-			expect(_=>parser((parser, o, x, i) => parser`<div data-hp-loop='["a"];${x}'>${i} -> ${x}</div>`)).not.to.throw()
-			expect(_=>parser((parser, o, x, i) => parser`<div data-hp-loop='${a};${x}'>${i} -> ${x}</div>`)).not.to.throw()
+			expect(_=>parser((parser, o, x) => parser`<div data-hp-loop='["a"];${x}'>${x}</div>`)).not.to.throw()
+			expect(_=>parser((parser, o, x) => parser`<div data-hp-loop='${a};${x}'>${x}</div>`)).not.to.throw()
 		})
 	})
 })

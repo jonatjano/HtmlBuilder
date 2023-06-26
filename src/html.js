@@ -548,12 +548,14 @@ builder.repeat = (count, tag, builderArgs, repeatCallback) => {
 
 /**
  * number of temporary symbols sent by parse
+ * @private
  * @type {number}
  */
 const PARSER_TEMPORARY_SYMBOL_COUNT = 10
 /**
  * map keeping the values of symbols between parses
  * temporary parse symbols are forgotten after each parse
+ * @private
  * @type {Map<Symbol, any>}
  */
 const PARSER_SYMBOL_VALUE_MAP = new Map()

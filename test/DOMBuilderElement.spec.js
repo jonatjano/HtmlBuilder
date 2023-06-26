@@ -322,7 +322,11 @@ describe("DOMBuilderElement", () => {
 	})
 
 	describe("cb", () => {
-		// TODO
+		it("receives the node as argument", () => {
+			hel.cb(node => {
+				expect(hel.node).to.be.equal(node)
+			})
+		})
 	})
 
 	describe("reset", () => {
