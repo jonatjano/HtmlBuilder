@@ -830,7 +830,7 @@ function parserInternalCallback(stringParts, ...args) {
 	// rebuild template string and replace args with <parser.argTagName>${argsIndex}</parser.argTagName>
 	let index = 0
 	let partialString = ""
-	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] ? `<${parser.argTagName}>${index}</${parser.argTagName}>` : ""); index++ }
+	while (index < stringParts.length) { partialString += stringParts[index] + (args[index] !== undefined ? `<${parser.argTagName}>${index}</${parser.argTagName}>` : ""); index++ }
 	doc.innerHTML = partialString
 
 	// create a map of the symbols used in the code to parse
@@ -866,6 +866,7 @@ function parserInternalCallback(stringParts, ...args) {
  * parse some html code into a DocumentFragment
  * @param {parser~parserCallback} cb
  * @return {DocumentFragment}
+ * TODO add possibility to send an html file path
  */
 const parser = cb => {
 	const tmpSymbols = Array(PARSER_TEMPORARY_SYMBOL_COUNT).fill(null).map((_,i) => Symbol(`htmlBuilder.parse symbol ${i}`))
@@ -964,7 +965,7 @@ function binder() {
 			if (prop === "onchange") { return this.onchange }
 			if (prop === binder.isBinder) { return true }
 			// TODO find how to store and remove event listener in order to uncomment next line
-			// if (prop === "removeElement") { return binder2.removeElement.bind(null, bindings, prop) }
+			// if (prop === "removeNode") { return binder2.removeElement.bind(null, bindings, prop) }
 			return null
 		},
 		set(target, prop, value) {
