@@ -1002,10 +1002,16 @@ binder.isBinder = Symbol("binder.isBinder")
  * @param {string} propName the property name
  */
 binder.elementAddEventListener = (element, proxyHandler, propName) => {
-	if ("value" in element) {
-		element.addEventListener("input", () => {
-			proxyHandler.set(proxyHandler, propName, element.value)
-		})
+	if (element instanceof HTMLInputElement) {
+		if (element.type === "checkbox") {
+			element.addEventListener("change", () => {
+				proxyHandler.set(proxyHandler, propName, element.checked)
+			})
+		} else {
+			element.addEventListener("input", () => {
+				proxyHandler.set(proxyHandler, propName, element.value)
+			})
+		}
 	}
 }
 
@@ -1029,6 +1035,7 @@ binder.addNode = (bindings, proxyHandler, propName, element) => {
 	}
 	bindings.get(propName).nodes.add(element)
 	binder.elementAddEventListener(element, proxyHandler, propName)
+	return element
 }
 
 /**
@@ -1038,8 +1045,12 @@ binder.addNode = (bindings, proxyHandler, propName, element) => {
  * @param {any} value
  */
 binder.setElementValue = (element, value) => {
-	if ("value" in element) {
-		element.value = value
+	if (element instanceof HTMLInputElement) {
+		if (element.type === "checkbox") {
+			element.checked = value
+		} else {
+			element.value = value
+		}
 	} else {
 		element.textContent = value
 	}
