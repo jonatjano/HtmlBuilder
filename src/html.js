@@ -936,11 +936,11 @@ Object.defineProperty(parser, "useTagName", { configurable: false, get: () => pa
  */
 /**
  * @callback binder~onchange
- * @param {string} propertyName
+ * @param {string | Symbol} propertyKey
  * @param {any} newValue
  */
 /**
- * @typedef {Object} binder~return
+ * @typedef {Object} Binder
  * @property {binder~addNode} addNode
  * @property {binder~onchange} [onchange]
  */
@@ -950,7 +950,7 @@ Object.defineProperty(parser, "useTagName", { configurable: false, get: () => pa
  * other elements gets a one way binding, getting its text updated when the variable change
  *
  * the onchange method can be added by the final user to get notified when any property value is changed
- * @return {binder~return}
+ * @return {Binder}
  */
 function binder() {
 	const object = Object.create(null)
@@ -962,18 +962,22 @@ function binder() {
 		get(target, prop) {
 			if (bindings.has(prop)) { return bindings.get(prop).value }
 			if (prop === "addNode") { return binder.addNode.bind(null, bindings, this) }
+			if (prop === "addProperty") { return binder.addProperty.bind(null, bindings) }
 			if (prop === "onchange") { return this.onchange }
 			if (prop === binder.isBinder) { return true }
 			// TODO find how to store and remove event listener in order to uncomment next line
 			// if (prop === "removeNode") { return binder2.removeElement.bind(null, bindings, prop) }
+			if (prop === "removeProperty") { return binder.addProperty.bind(null, bindings) }
 			return null
 		},
 		set(target, prop, value) {
 			if (bindings.has(prop)) {
 				const bind = bindings.get(prop)
-				bind.value = value
 				this.onchange?.(prop, value)
-				bind.nodes.forEach(el => binder.setElementValue(el, value))
+				if (bind) {
+					bind.value = value
+					bind.nodes.forEach(el => binder.setElementValue(el, value))
+				}
 				return true
 			}
 			if (prop === "onchange") {
@@ -984,7 +988,7 @@ function binder() {
 					throw new TypeError("binder.onchange must be a function")
 				}
 			}
-			return false
+			return true
 		}
 	})
 	Object.preventExtensions(proxy)
@@ -1036,6 +1040,29 @@ binder.addNode = (bindings, proxyHandler, propName, element) => {
 	bindings.get(propName).nodes.add(element)
 	binder.elementAddEventListener(element, proxyHandler, propName)
 	return element
+}
+
+/**
+ * @param {binder~bindings} bindings
+ * @param {string} propName
+ * @param {any} initialValue
+ */
+binder.addProperty = (bindings, propName, initialValue = undefined) => {
+	bindings.set(propName, {value: initialValue, nodes: new Set()})
+}
+
+/**
+ * @param {binder~bindings} bindings
+ * @param {string} propName
+ */
+binder.removeProperty = (bindings, propName) => {
+	const bind = bindings.get(propName)
+	if (bind.nodes.size !== 0) {
+		// TODO remove this once I find how to remove event listeners
+		// 	replace by a loop call to binder.removeNode
+		throw new Error("Cannot remove a property linked to at least one node")
+	}
+	bindings.delete(propName)
 }
 
 /**
